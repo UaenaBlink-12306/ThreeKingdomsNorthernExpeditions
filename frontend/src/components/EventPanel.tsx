@@ -1,3 +1,4 @@
+import { useMemo, useState } from "react";
 import type { OptionView } from "../types";
 import { AnimatePresence, motion } from "framer-motion";
 
@@ -6,24 +7,55 @@ interface EventPanelProps {
   options: OptionView[];
   busy: boolean;
   can_next_turn: boolean;
+  turn: number;
   onChoose: (optionId: string) => void;
   onNextTurn: () => void;
 }
+
+const EVENT_HELP_SEEN_KEY = "seen_event_help";
+const EVENT_ONBOARD_SEEN_KEY = "seen_event_micro_onboard";
 
 export default function EventPanel({
   text,
   options,
   busy,
   can_next_turn,
+  turn,
   onChoose,
   onNextTurn,
 }: EventPanelProps) {
   const hasOptions = options.length > 0;
   const allDisabled = hasOptions && options.every((opt) => Boolean(opt.disabled));
+  const [hideHint, setHideHint] = useState(() => localStorage.getItem(EVENT_HELP_SEEN_KEY) === "1");
+  const [hideOnboard, setHideOnboard] = useState(() => localStorage.getItem(EVENT_ONBOARD_SEEN_KEY) === "1");
+
+  const prompt = useMemo(
+    () => (hasOptions ? `你现在要做：选择一个行动（${options.length}）` : "你现在要做：推进回合（触发被动变化）"),
+    [hasOptions, options.length]
+  );
+
+  function dismissHint() {
+    setHideHint(true);
+    localStorage.setItem(EVENT_HELP_SEEN_KEY, "1");
+  }
+
+  function dismissOnboard() {
+    setHideOnboard(true);
+    localStorage.setItem(EVENT_ONBOARD_SEEN_KEY, "1");
+  }
 
   return (
     <section className="panel event-panel">
       <h2>当前事件</h2>
+      <p className="action-prompt">{prompt}</p>
+      {!hideOnboard && turn <= 1 ? (
+        <div className="event-onboard" onClick={dismissOnboard} role="button" tabIndex={0}>
+          <div>赢：关中 3/3 且陇右稳定</div>
+          <div>输：Doom 链条失败 / 核心失守</div>
+          <div>每回合：先看变化 + Because，再决定选项</div>
+        </div>
+      ) : null}
+
       <AnimatePresence mode="wait">
         <motion.p
           key={text}
@@ -36,20 +68,19 @@ export default function EventPanel({
         </motion.p>
       </AnimatePresence>
 
-      <section className="event-cta">
-        <h3>{hasOptions ? "请选择行动 / Choose an option" : "继续下一回合 / Next Turn"}</h3>
-        {hasOptions ? (
-          <p>此处需要你的决策。做出选择后，剧情才会继续推进。</p>
-        ) : (
-          <p>当前节点没有分支选项，时间流逝并触发被动变化。</p>
-        )}
-        {!hasOptions ? (
-          <button type="button" className="primary-cta" disabled={busy || !can_next_turn} onClick={onNextTurn}>
-            继续下一回合
-          </button>
-        ) : null}
-        {allDisabled ? <small>选项暂不可用，通常是资源或条件不足。</small> : null}
-      </section>
+      {!hideHint ? (
+        <section className="event-cta">
+          <p>提示：有选项先决策；无选项时再推进回合。此提示仅显示一次。</p>
+          <button type="button" onClick={dismissHint}>知道了</button>
+        </section>
+      ) : null}
+
+      {!hasOptions ? (
+        <button type="button" className="primary-cta" disabled={busy || !can_next_turn} onClick={onNextTurn}>
+          继续下一回合
+        </button>
+      ) : null}
+      {allDisabled ? <small>选项暂不可用，通常是资源或条件不足。</small> : null}
 
       <div className="options">
         {options.map((opt, index) => (
@@ -62,6 +93,7 @@ export default function EventPanel({
             onClick={() => onChoose(opt.id)}
           >
             {opt.label}
+            {opt.disabled_reason ? `（不可选：${opt.disabled_reason}）` : ""}
           </motion.button>
         ))}
       </div>

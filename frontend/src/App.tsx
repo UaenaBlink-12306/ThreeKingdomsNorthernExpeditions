@@ -8,6 +8,7 @@ import EndModal from "./components/EndModal";
 import MapPanel from "./components/MapPanel";
 import GoalPanel from "./components/GoalPanel";
 import HelpDrawer from "./components/HelpDrawer";
+import ObjectiveStrip from "./components/ObjectiveStrip";
 import { useGameSession } from "./hooks/useGameSession";
 import { diffState } from "./utils/diff";
 
@@ -39,7 +40,8 @@ export default function App() {
   return (
     <main className="app-shell">
       <HeaderBar state={state} on_open_help={() => setHelpOpen(true)} />
-      <StatusPanel state={state} />
+      <ObjectiveStrip state={state} />
+      <StatusPanel state={state} prevState={prevState} />
       <GoalPanel state={state} />
       <MapPanel state={state} audioEnabled={audioEnabled} />
 
@@ -49,15 +51,15 @@ export default function App() {
           options={state.current_event.options}
           busy={busy}
           can_next_turn={canNextTurn}
+          turn={state.turn}
           onChoose={onChoose}
           onNextTurn={onNextTurn}
         />
-        {summary ? <LogPanel log={state.log} summary={summary} /> : null}
+        {summary ? <LogPanel log={state.log} prevLog={prevState?.log ?? []} summary={summary} state={state} prevState={prevState} /> : null}
       </section>
 
       <section className="panel controls">
         <button disabled={busy} onClick={() => void onNewGame()}>新游戏</button>
-        <button disabled={busy || !canNextTurn} onClick={() => void onNextTurn()}>继续下一回合</button>
         {canAct && hasDecisionOptions ? <span className="control-note">当前有选项可选，先在事件区做决策。</span> : null}
         <span>Game ID: {state.game_id}</span>
       </section>
