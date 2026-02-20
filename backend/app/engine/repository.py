@@ -2,7 +2,7 @@
 
 import random
 from dataclasses import dataclass
-from typing import Protocol
+from typing import Any, Protocol
 
 from app.models.state import GameState
 
@@ -11,6 +11,8 @@ from app.models.state import GameState
 class GameSession:
     state: GameState
     rng: random.Random
+    diagnostics: list[dict[str, Any]]
+    action_history: list[dict[str, Any]]
 
 
 class StateRepository(Protocol):
@@ -28,7 +30,12 @@ class InMemoryRepository:
         self._sessions: dict[str, GameSession] = {}
 
     def create(self, state: GameState) -> GameSession:
-        session = GameSession(state=state, rng=random.Random(state.seed))
+        session = GameSession(
+            state=state,
+            rng=random.Random(state.seed),
+            diagnostics=[],
+            action_history=[],
+        )
         self._sessions[state.game_id] = session
         return session
 
