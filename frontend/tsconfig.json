@@ -8,7 +8,12 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "noEmit": true,
-    "types": ["vite/client"]
+    "types": ["vite/client"],
+    "baseUrl": ".",
+    "paths": {
+      "@tanstack/react-query": ["src/shims/react-query.tsx"],
+      "zustand": ["src/shims/zustand.ts"]
+    }
   },
   "include": ["src"]
 }
