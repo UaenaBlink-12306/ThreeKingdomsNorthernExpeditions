@@ -151,6 +151,21 @@ python -m pytest backend/tests -q
 - `validate_graph`：图结构合法性、缓冲区可进可出、终局可达
 - `simulate`：`n=2000` 随机策略仿真，无死锁、胜率窗口断言
 
+## 6.1 内容改动前本地校验（剧情生产规范）
+
+每次修改 `backend/app/data/events.json`（新增节点、改分支、改 route）前，先在仓库根目录执行：
+
+```bash
+python backend/scripts/validate_events.py backend/app/data/events.json
+```
+
+校验分两步：
+
+1. **JSON Schema 结构校验**：检查字段缺失、类型错误、节点结构与 `node_type` 约束不匹配；
+2. **语义校验（validate_graph）**：检查可达性、缓冲区（recover/court/defense）进出边、route 与 location 合法性。
+
+若报错会给出字段路径、节点 id 与修复建议。请确保本地校验通过后再提交内容变更。
+
 ## 7. 调参与扩展
 
 - 数值集中在：`backend/app/engine/balance.py`

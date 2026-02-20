@@ -1,0 +1,132 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Three Kingdoms Event Graph",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["start_node", "nodes"],
+  "properties": {
+    "start_node": {
+      "type": "string",
+      "minLength": 1
+    },
+    "nodes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/NodeModel"
+      }
+    }
+  },
+  "$defs": {
+    "NodeType": {
+      "type": "string",
+      "enum": ["choice", "check", "terminal"]
+    },
+    "OptionModel": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label", "next"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "label": {"type": "string", "minLength": 1},
+        "next": {"type": "string", "minLength": 1},
+        "effects": {
+          "type": "object",
+          "default": {},
+          "additionalProperties": true
+        },
+        "condition": {
+          "type": ["string", "null"]
+        }
+      }
+    },
+    "NodeMeta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["location"],
+      "properties": {
+        "location": {"type": "string", "minLength": 1},
+        "gain_control": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1},
+          "default": []
+        },
+        "lose_control": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1},
+          "default": []
+        },
+        "route_id": {
+          "type": ["string", "null"]
+        }
+      }
+    },
+    "NodeModel": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "node_type", "text", "meta"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "node_type": {"$ref": "#/$defs/NodeType"},
+        "text": {"type": "string", "minLength": 1},
+        "meta": {"$ref": "#/$defs/NodeMeta"},
+        "chapter": {"type": ["integer", "null"]},
+        "phase": {"type": ["string", "null"]},
+        "options": {
+          "type": "array",
+          "default": [],
+          "items": {"$ref": "#/$defs/OptionModel"}
+        },
+        "check": {"type": ["string", "null"]},
+        "success_next": {"type": ["string", "null"]},
+        "fail_next": {"type": ["string", "null"]},
+        "success_effects": {
+          "type": "object",
+          "default": {},
+          "additionalProperties": true
+        },
+        "fail_effects": {
+          "type": "object",
+          "default": {},
+          "additionalProperties": true
+        },
+        "outcome": {"type": ["string", "null"]}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"node_type": {"const": "choice"}}, "required": ["node_type"]},
+          "then": {
+            "required": ["options"],
+            "properties": {
+              "options": {"minItems": 1}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"node_type": {"const": "check"}}, "required": ["node_type"]},
+          "then": {
+            "required": ["check", "success_next", "fail_next"],
+            "properties": {
+              "check": {"type": "string", "minLength": 1},
+              "success_next": {"type": "string", "minLength": 1},
+              "fail_next": {"type": "string", "minLength": 1}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"node_type": {"const": "terminal"}}, "required": ["node_type"]},
+          "then": {
+            "required": ["outcome"],
+            "properties": {
+              "outcome": {"type": "string", "minLength": 1},
+              "options": {"maxItems": 0},
+              "check": {"type": "null"},
+              "success_next": {"type": "null"},
+              "fail_next": {"type": "null"}
+            }
+          }
+        }
+      ]
+    }
+  }
+}
