@@ -1,5 +1,7 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
+import copy
+import logging
 import os
 import random
 import uuid
@@ -16,6 +18,8 @@ from app.engine.repository import InMemoryRepository, StateRepository
 from app.engine.repository_sqlite import SQLiteRepository
 from app.models.event_graph import NodeType
 from app.models.state import EventView, GameState, OptionView, Outcome, Phase
+
+logger = logging.getLogger(__name__)
 
 
 class GameEngine:
@@ -73,6 +77,15 @@ class GameEngine:
             roll_count=0,
         )
         session = self.repository.create(initial)
+        self._record_action(session, "new_game", {"seed": seed})
+        self._trace(
+            session,
+            level="info",
+            event="new_game",
+            action="new_game",
+            payload={"seed": seed},
+        )
+
         self._set_node(session.state, self.graph.start_node)
         self._resolve_checks(session)
         self._evaluate_outcome(session)
@@ -82,6 +95,15 @@ class GameEngine:
     def get_state(self, game_id: str) -> GameState:
         session = self._require_session(game_id)
         return session.state
+
+    def get_replay(self, game_id: str) -> dict[str, Any]:
+        session = self._require_session(game_id)
+        return {
+            "game_id": session.state.game_id,
+            "seed": session.state.seed,
+            "actions": copy.deepcopy(session.action_history),
+            "diagnostics": copy.deepcopy(session.diagnostics),
+        }
 
     def reset(self, game_id: str | None = None) -> None:
         self.repository.reset(game_id)
@@ -95,6 +117,9 @@ class GameEngine:
 
         payload = payload or {}
         action = self._normalize_action(action)
+        before = self._snapshot_state(state)
+        self._record_action(session, action, payload)
+        self._trace(session, level="info", event="action", action=action, payload=payload)
 
         if action == "choose_option":
             option_id = payload.get("option_id")
@@ -107,8 +132,69 @@ class GameEngine:
             raise ValueError(f"Unsupported action: {action}")
 
         self._evaluate_outcome(session)
+        self._trace_state_diff(session, action, before, state)
         self.repository.save(session)
         return state
+
+    def _record_action(self, session, action: str, payload: dict[str, Any]) -> None:
+        session.action_history.append({"action": action, "payload": copy.deepcopy(payload)})
+
+    def _snapshot_state(self, state: GameState) -> dict[str, Any]:
+        return state.model_dump(mode="python")
+
+    def _trace(
+        self,
+        session,
+        *,
+        level: str,
+        event: str,
+        action: str | None = None,
+        payload: dict[str, Any] | None = None,
+        check_key: str | None = None,
+        probability: float | None = None,
+        roll: float | None = None,
+        success: bool | None = None,
+        node_id: str | None = None,
+        extra: dict[str, Any] | None = None,
+    ) -> None:
+        state = session.state
+        entry: dict[str, Any] = {
+            "level": level,
+            "event": event,
+            "game_id": state.game_id,
+            "turn": state.turn,
+            "node": node_id or state.current_node_id,
+            "action": action,
+            "payload": copy.deepcopy(payload) if payload is not None else None,
+            "check_key": check_key,
+            "probability": probability,
+            "roll": roll,
+            "success": success,
+        }
+        if extra:
+            entry.update(extra)
+
+        session.diagnostics.append(entry)
+
+        log_level = logging.INFO if level == "info" else logging.DEBUG
+        logger.log(log_level, "engine_trace", extra={"trace": entry})
+
+    def _trace_state_diff(self, session, action: str, before: dict[str, Any], state: GameState) -> None:
+        after = state.model_dump(mode="python")
+        diff: dict[str, dict[str, Any]] = {}
+        for key, old_value in before.items():
+            new_value = after.get(key)
+            if old_value != new_value:
+                diff[key] = {"before": old_value, "after": new_value}
+        if diff:
+            self._trace(
+                session,
+                level="debug",
+                event="state_diff",
+                action=action,
+                payload=None,
+                extra={"changes": diff},
+            )
 
     def _normalize_action(self, action: str) -> str:
         if action in {"recover_choice", "court_choice", "defense_choice"}:
@@ -164,6 +250,14 @@ class GameEngine:
         self._transition(session, option.next)
 
     def _transition(self, session, next_node_id: str) -> None:
+        self._trace(
+            session,
+            level="info",
+            event="transition",
+            action="transition",
+            payload={"next_node_id": next_node_id},
+            node_id=next_node_id,
+        )
         self._set_node(session.state, next_node_id)
         self._resolve_checks(session)
 
@@ -232,11 +326,26 @@ class GameEngine:
                 break
 
             check_key = node.check or ""
+            roll = None
+            probability = None
             if check_key:
                 success, roll, probability = roll_check(check_key, state, session.rng)
                 add_log(state, f"检定[{check_key}]：{roll:.2f} / {probability:.2f}。")
             else:
                 success = True
+
+            self._trace(
+                session,
+                level="info",
+                event="check_resolved",
+                action="resolve_check",
+                payload=None,
+                check_key=check_key or None,
+                probability=probability,
+                roll=roll,
+                success=success,
+                node_id=node.id,
+            )
 
             if success:
                 apply_effects(state, node.success_effects)

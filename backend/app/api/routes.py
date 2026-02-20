@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException, Query
 from app.engine.runtime import GameEngine
 from app.models.requests import ActRequest, NewGameRequest, ResetRequest
 from app.models.state import GameState
+from app.models.telemetry import ReplayView
 
 router = APIRouter(prefix="/api", tags=["game"])
 engine = GameEngine()
@@ -31,6 +32,15 @@ def act(req: ActRequest) -> GameState:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/replay", response_model=ReplayView)
+def get_replay(game_id: str = Query(...)) -> ReplayView:
+    try:
+        data = engine.get_replay(game_id)
+        return ReplayView.model_validate(data)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @router.post("/reset")
