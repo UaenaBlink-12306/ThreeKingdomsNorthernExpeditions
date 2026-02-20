@@ -3,56 +3,57 @@ export interface CompressedLogLine {
   count: number;
 }
 
-const PREFIX_RE = /^([\u4e00-\u9fa5A-Za-z]{1,8})[:：]\s*(.+)$/;
+export interface ParsedLogLine {
+  type: "fx_token" | "turn_tick" | "check_roll" | "story_log";
+  normalized: string;
+  text: string;
+}
 
-function removablePrefixes(lines: string[]): Set<string> {
-  const counts = new Map<string, number>();
+const TURN_RE = /第\d+回合/;
+const NUMBER_RE = /\d+/g;
+
+export function parseLogLine(line: string): ParsedLogLine {
+  if (line.startsWith("FX_")) {
+    return { type: "fx_token", normalized: "fx_token", text: line };
+  }
+
+  if (TURN_RE.test(line) || line.includes("危机值")) {
+    const normalized = line.replace(/第\d+回合/g, "第#回合").replace(NUMBER_RE, "#");
+    return { type: "turn_tick", normalized, text: line };
+  }
+
+  if (line.includes("检定[")) {
+    const normalized = line.replace(NUMBER_RE, "#");
+    return { type: "check_roll", normalized, text: line };
+  }
+
+  return {
+    type: "story_log",
+    normalized: line.replace(NUMBER_RE, "#"),
+    text: line,
+  };
+}
+
+export function compressLog(lines: string[], lookbackWindow = 8): CompressedLogLine[] {
+  const compressed: Array<CompressedLogLine & { normalized: string }> = [];
+
   for (const line of lines) {
-    const match = line.match(PREFIX_RE);
-    if (!match) {
-      continue;
+    const parsed = parseLogLine(line);
+    let merged = false;
+
+    for (let i = compressed.length - 1; i >= 0 && compressed.length - i <= lookbackWindow; i -= 1) {
+      if (compressed[i].normalized === parsed.normalized) {
+        compressed[i].count += 1;
+        compressed[i].text = line;
+        merged = true;
+        break;
+      }
     }
-    const prefix = match[1];
-    counts.set(prefix, (counts.get(prefix) ?? 0) + 1);
-  }
-  const removable = new Set<string>();
-  for (const [prefix, count] of counts.entries()) {
-    if (count >= 3) {
-      removable.add(prefix);
+
+    if (!merged) {
+      compressed.push({ text: line, count: 1, normalized: parsed.normalized });
     }
   }
-  return removable;
-}
 
-function simplifyLine(line: string, removable: Set<string>): string {
-  const match = line.match(PREFIX_RE);
-  if (!match) {
-    return line;
-  }
-  const [, prefix, body] = match;
-  if (!removable.has(prefix)) {
-    return line;
-  }
-  return body;
-}
-
-export function compressLog(lines: string[]): CompressedLogLine[] {
-  if (lines.length < 1) {
-    return [];
-  }
-
-  const removable = removablePrefixes(lines);
-  const compressed: CompressedLogLine[] = [];
-
-  for (const rawLine of lines) {
-    const text = simplifyLine(rawLine, removable);
-    const last = compressed[compressed.length - 1];
-    if (last && last.text === text) {
-      last.count += 1;
-      continue;
-    }
-    compressed.push({ text, count: 1 });
-  }
-
-  return compressed;
+  return compressed.map(({ text, count }) => ({ text, count }));
 }

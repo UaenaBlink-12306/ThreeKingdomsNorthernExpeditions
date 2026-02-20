@@ -526,3 +526,73 @@ button:disabled {
     flex-direction: column;
   }
 }
+
+.objective-strip {
+  position: sticky;
+  top: 8px;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 8px;
+  background: #fffdf5;
+}
+
+.objective-danger {
+  color: #9b2222;
+  font-weight: 700;
+}
+
+.action-prompt {
+  margin: 0 0 8px;
+  font-weight: 600;
+  color: #4d3a21;
+}
+
+.event-onboard {
+  border: 1px dashed #cab58f;
+  border-radius: 8px;
+  background: #fffdf6;
+  padding: 8px;
+  font-size: 13px;
+  display: grid;
+  gap: 4px;
+  margin-bottom: 8px;
+  cursor: pointer;
+}
+
+.because-line,
+.next-line {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: #42331f;
+}
+
+.warning-badges {
+  margin-top: 8px;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.warning-badges span {
+  background: #fce7e7;
+  color: #8f2323;
+  border: 1px solid #e8bcbc;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 12px;
+}
+
+.tabs {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.status-item small {
+  color: #6d5a3d;
+}
+
+.status-item.danger {
+  border: 1px solid #efc9c9;
+  background: #fff2f2;
+}
