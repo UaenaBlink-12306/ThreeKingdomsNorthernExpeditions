@@ -11,7 +11,7 @@ export default function GoalPanel({ state }: GoalPanelProps) {
       <h2>目标与规则 / Goal</h2>
       <ul>
         <li>
-          胜利条件：`关中回合 >= 3` 且 `陇右未崩盘`。
+          胜利条件：`关中回合 &gt;= 3` 且 `陇右未崩盘`。
           <span className="goal-inline">
             当前：关中 {state.guanzhong_turns}/3，陇右{state.longyou_collapsed ? "已崩盘" : "稳定"}。
           </span>
