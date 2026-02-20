@@ -6,6 +6,7 @@ export interface OptionView {
   id: string;
   label: string;
   disabled?: boolean;
+  disabled_reason?: string;
 }
 
 export interface EventView {

@@ -32,20 +32,17 @@ export default function HelpDrawer({
             onClick={(event) => event.stopPropagation()}
           >
             <header className="help-header">
-              <h2>玩法帮助</h2>
-              <button type="button" onClick={on_close}>
-                关闭
-              </button>
+              <h2>术语与阶段参考</h2>
+              <button type="button" onClick={on_close}>关闭</button>
             </header>
             <ul>
-              <li>`campaign`：主动出击与推进战线。</li>
-              <li>`recover`：整补兵粮，缓和挫败。</li>
-              <li>`court`：朝议与内政，处理政争风险。</li>
-              <li>`defense`：防守魏军压力，避免 Doom 爆表。</li>
-              <li>`final`：冲击关中并稳固控制回合。</li>
+              <li>campaign：主动推进战线。</li>
+              <li>recover：整补兵粮，回收损失。</li>
+              <li>court：处理朝议与政争。</li>
+              <li>defense：压制魏军攻势，防 Doom 上升。</li>
+              <li>final：冲击并稳固关中回合。</li>
             </ul>
-            <p>回合制模拟会出现重复文本。现在可先看“本回合变化”，再按需展开详细日志。</p>
-            <p>策略提示：稳粮道、控 Doom、守住陇右，再图关中三回合。</p>
+            <p>建议阅读顺序：目标条 → 本回合变化 + Because → 本回合战报。</p>
 
             <label className="help-checkbox">
               <input
