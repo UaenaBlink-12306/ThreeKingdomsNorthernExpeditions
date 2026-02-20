@@ -5,7 +5,7 @@
 - 后端：FastAPI（状态机 + 事件图引擎）
 - 前端：React + Vite + TypeScript（只负责渲染和交互）
 - 地图：Leaflet + OSM + React-Leaflet（含 ant-path、方向箭头、行军特效）
-- 存档：内存 `dict`（预留仓储接口，后续可替换 SQLite）
+- 存档：支持内存 `dict` 与 SQLite（可通过环境变量切换）
 
 ## 1. 功能闭环
 
@@ -48,6 +48,19 @@ cd backend
 python -m pip install -r requirements.txt
 python -m uvicorn app.main:app --reload --port 8000
 ```
+
+### 仓储后端切换（内存 / SQLite）
+
+后端默认使用内存仓储；可通过环境变量切换到 SQLite 持久化：
+
+```bash
+cd backend
+REPOSITORY_BACKEND=sqlite SQLITE_PATH=./data/game_sessions.db python -m uvicorn app.main:app --reload --port 8000
+```
+
+- `REPOSITORY_BACKEND=inmemory|sqlite`（默认 `inmemory`）
+- `SQLITE_PATH` 仅在 `sqlite` 模式下生效（默认 `backend/data/game_sessions.db`）
+- SQLite 模式会在启动时自动初始化 `sessions` 表（`CREATE TABLE IF NOT EXISTS`），无需手工迁移。
 
 健康检查：`http://127.0.0.1:8000/health`
 
@@ -138,9 +151,29 @@ python -m pytest backend/tests -q
 - `validate_graph`：图结构合法性、缓冲区可进可出、终局可达
 - `simulate`：`n=2000` 随机策略仿真，无死锁、胜率窗口断言
 
+## 6.1 内容改动前本地校验（剧情生产规范）
+
+每次修改 `backend/app/data/events.json`（新增节点、改分支、改 route）前，先在仓库根目录执行：
+
+```bash
+python backend/scripts/validate_events.py backend/app/data/events.json
+```
+
+校验分两步：
+
+1. **JSON Schema 结构校验**：检查字段缺失、类型错误、节点结构与 `node_type` 约束不匹配；
+2. **语义校验（validate_graph）**：检查可达性、缓冲区（recover/court/defense）进出边、route 与 location 合法性。
+
+若报错会给出字段路径、节点 id 与修复建议。请确保本地校验通过后再提交内容变更。
+
 ## 7. 调参与扩展
 
 - 数值集中在：`backend/app/engine/balance.py`
 - 事件图在：`backend/app/data/events.json`
 - 仓储接口在：`backend/app/engine/repository.py`
-  - 未来可新增 SQLite 实现并替换 `InMemoryRepository`
+- SQLite 实现在：`backend/app/engine/repository_sqlite.py`
+- 本地调试 SQLite：
+  ```bash
+  cd backend
+  REPOSITORY_BACKEND=sqlite SQLITE_PATH=./data/dev_sessions.db python -m pytest tests/test_repository_sqlite.py -q
+  ```

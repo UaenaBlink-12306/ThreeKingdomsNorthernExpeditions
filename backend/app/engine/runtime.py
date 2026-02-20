@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import logging
+import os
 import random
 import uuid
 from pathlib import Path
@@ -14,6 +15,7 @@ from app.engine.effects import add_log, apply_effects
 from app.engine.graph import EventGraph, load_graph
 from app.engine.map_catalog import PLACE_ORDER
 from app.engine.repository import InMemoryRepository, StateRepository
+from app.engine.repository_sqlite import SQLiteRepository
 from app.models.event_graph import NodeType
 from app.models.state import EventView, GameState, OptionView, Outcome, Phase
 
@@ -22,12 +24,20 @@ logger = logging.getLogger(__name__)
 
 class GameEngine:
     def __init__(self, repository: StateRepository | None = None, graph: EventGraph | None = None) -> None:
-        self.repository = repository or InMemoryRepository()
+        self.repository = repository or self._build_repository_from_env()
         if graph is not None:
             self.graph = graph
         else:
             data_path = Path(__file__).resolve().parent.parent / "data" / "events.json"
             self.graph = load_graph(data_path)
+
+    def _build_repository_from_env(self) -> StateRepository:
+        backend = os.getenv("REPOSITORY_BACKEND", "inmemory").strip().lower()
+        if backend == "sqlite":
+            default_path = Path(__file__).resolve().parents[2] / "data" / "game_sessions.db"
+            db_path = os.getenv("SQLITE_PATH", str(default_path))
+            return SQLiteRepository(db_path=db_path)
+        return InMemoryRepository()
 
     def new_game(self, game_id: str | None = None, seed: int | None = None) -> GameState:
         gid = game_id or str(uuid.uuid4())

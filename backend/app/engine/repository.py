@@ -1,5 +1,7 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
+import base64
+import pickle
 import random
 from dataclasses import dataclass
 from typing import Any, Protocol
@@ -13,6 +15,21 @@ class GameSession:
     rng: random.Random
     diagnostics: list[dict[str, Any]]
     action_history: list[dict[str, Any]]
+
+    def serialize_state(self) -> str:
+        return self.state.model_dump_json()
+
+    def serialize_rng(self) -> str:
+        payload = pickle.dumps(self.rng.getstate())
+        return base64.b64encode(payload).decode("ascii")
+
+    @classmethod
+    def from_serialized(cls, state_json: str, rng_state: str) -> GameSession:
+        state = GameState.model_validate_json(state_json)
+        rng = random.Random()
+        payload = base64.b64decode(rng_state.encode("ascii"))
+        rng.setstate(pickle.loads(payload))
+        return cls(state=state, rng=rng)
 
 
 class StateRepository(Protocol):
