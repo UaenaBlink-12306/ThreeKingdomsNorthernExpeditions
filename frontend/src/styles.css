@@ -1,0 +1,528 @@
+:root {
+  font-family: "Segoe UI", "PingFang SC", sans-serif;
+  color: #1b1b1b;
+  background: #f3f1ea;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+.app-shell {
+  min-height: 100vh;
+  padding: 16px;
+  display: grid;
+  gap: 12px;
+}
+
+.panel {
+  background: #ffffff;
+  border: 1px solid #d8d1c0;
+  border-radius: 10px;
+  padding: 12px;
+}
+
+.header-bar h1 {
+  margin: 0 0 8px;
+  font-size: 22px;
+}
+
+.header-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.header-meta {
+  display: flex;
+  gap: 14px;
+  font-size: 14px;
+}
+
+.help-btn {
+  background: #f2efe5;
+  border-color: #b2a487;
+}
+
+.status-grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+}
+
+.status-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: #faf8f2;
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.main-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 1.7fr 1fr;
+}
+
+.goal-panel h2 {
+  margin: 0 0 8px;
+  font-size: 16px;
+}
+
+.goal-panel ul {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.goal-inline {
+  margin-left: 6px;
+  color: #5f543e;
+}
+
+.event-panel p {
+  margin-top: 8px;
+  line-height: 1.6;
+}
+
+.event-cta {
+  margin-top: 10px;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #d8c9aa;
+  background: #fff8e8;
+}
+
+.event-cta h3 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.event-cta p {
+  margin: 6px 0 0;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.event-cta small {
+  display: block;
+  margin-top: 8px;
+  color: #7a4a29;
+}
+
+.primary-cta {
+  margin-top: 8px;
+  font-weight: 600;
+  background: #f9e2b4;
+}
+
+.options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+button {
+  border: 1px solid #7a5f37;
+  border-radius: 8px;
+  background: #fff8e5;
+  color: #2a2114;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.log-panel ul {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 6px;
+  max-height: 360px;
+  overflow: auto;
+}
+
+.turn-summary {
+  border: 1px solid #e0d3b8;
+  background: #fbf8f0;
+  border-radius: 8px;
+  padding: 8px;
+  margin-bottom: 10px;
+}
+
+.turn-summary h3 {
+  margin: 0 0 6px;
+  font-size: 14px;
+}
+
+.turn-summary ul {
+  margin: 0;
+  padding-left: 16px;
+  display: grid;
+  gap: 5px;
+  font-size: 13px;
+  max-height: 150px;
+  overflow: auto;
+}
+
+.log-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.raw-toggle {
+  font-size: 12px;
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.log-preview {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 6px;
+  max-height: 210px;
+  overflow: auto;
+}
+
+.controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.control-note {
+  font-size: 12px;
+  color: #644f2f;
+}
+
+.error {
+  color: #a72e2e;
+  margin: 0;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: grid;
+  place-items: center;
+  padding: 16px;
+}
+
+.modal {
+  max-width: 380px;
+  width: 100%;
+  background: #fff;
+  border-radius: 12px;
+  padding: 18px;
+  border: 1px solid #d8d1c0;
+}
+
+.help-drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.28);
+  display: flex;
+  justify-content: flex-end;
+  z-index: 1300;
+}
+
+.help-drawer {
+  width: min(360px, 90vw);
+  height: 100%;
+  border-radius: 0;
+  border-top: 0;
+  border-right: 0;
+  border-bottom: 0;
+  padding: 14px;
+  overflow: auto;
+}
+
+.help-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.help-header h2 {
+  margin: 0;
+}
+
+.help-drawer ul {
+  padding-left: 18px;
+  margin: 10px 0;
+  display: grid;
+  gap: 6px;
+}
+
+.help-drawer p {
+  margin: 8px 0;
+  line-height: 1.5;
+}
+
+.help-checkbox {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 8px;
+  font-size: 13px;
+}
+
+@media (max-width: 900px) {
+  .main-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.map-panel {
+  padding: 0;
+  overflow: hidden;
+}
+
+.map-header {
+  padding: 12px 14px 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.map-header h2 {
+  margin: 0;
+}
+
+.map-wrap {
+  margin-top: 10px;
+  height: 430px;
+  position: relative;
+  border-top: 1px solid #e0d7c2;
+}
+
+.map-canvas {
+  width: 100%;
+  height: 100%;
+}
+
+.route-glow {
+  filter: drop-shadow(0 0 8px rgba(253, 215, 125, 0.8));
+}
+
+.route-ant {
+  stroke-dasharray: 12 18;
+  animation: antDash 1.2s linear infinite;
+  filter: drop-shadow(0 0 4px rgba(255, 228, 157, 0.65));
+}
+
+@keyframes antDash {
+  from {
+    stroke-dashoffset: 0;
+  }
+  to {
+    stroke-dashoffset: -42;
+  }
+}
+
+.place-current-marker {
+  animation: markerPulse 1.6s ease-in-out infinite;
+}
+
+@keyframes markerPulse {
+  0% {
+    filter: drop-shadow(0 0 0 rgba(255, 221, 150, 0.8));
+  }
+  50% {
+    filter: drop-shadow(0 0 8px rgba(255, 221, 150, 0.95));
+  }
+  100% {
+    filter: drop-shadow(0 0 0 rgba(255, 221, 150, 0.8));
+  }
+}
+
+.place-controlled-marker {
+  filter: drop-shadow(0 0 3px rgba(175, 255, 155, 0.8));
+}
+
+.flag-div-icon {
+  background: transparent;
+  border: 0;
+}
+
+.flag-div-icon img {
+  width: 16px;
+  height: 16px;
+  opacity: 0.95;
+}
+
+.army-div-icon {
+  background: transparent;
+  border: 0;
+}
+
+.army-marker-inner {
+  width: 30px;
+  height: 30px;
+  transform-origin: 50% 50%;
+  filter: drop-shadow(0 0 4px rgba(255, 219, 129, 0.7));
+}
+
+.army-marker-inner img {
+  width: 100%;
+  height: 100%;
+}
+
+.threat-ring {
+  animation: threatPulse 1.9s ease-in-out infinite;
+}
+
+@keyframes threatPulse {
+  0% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.78;
+  }
+  100% {
+    opacity: 0.4;
+  }
+}
+
+.fx-overlay {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.fx-route-flash {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, rgba(255, 233, 171, 0.32), transparent 65%);
+}
+
+.fx-impact {
+  position: absolute;
+  width: 34px;
+  height: 34px;
+  margin-left: -17px;
+  margin-top: -17px;
+  border-radius: 999px;
+}
+
+.fx-impact-success {
+  border: 3px solid rgba(248, 215, 132, 0.95);
+  box-shadow: 0 0 18px rgba(248, 215, 132, 0.9);
+}
+
+.fx-impact-fail {
+  border: 3px solid rgba(138, 62, 62, 0.95);
+  box-shadow: 0 0 16px rgba(138, 62, 62, 0.85);
+}
+
+.fx-shake {
+  animation: mapShake 0.15s linear;
+}
+
+@keyframes mapShake {
+  0% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-4px);
+  }
+  50% {
+    transform: translateX(4px);
+  }
+  75% {
+    transform: translateX(-2px);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+.fx-outcome {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  padding: 20px;
+}
+
+.fx-outcome h3 {
+  margin: 0 0 8px;
+  font-size: 32px;
+}
+
+.fx-outcome-win {
+  background: linear-gradient(180deg, rgba(250, 235, 177, 0.2), rgba(255, 250, 235, 0.45));
+  color: #3f2a15;
+  text-shadow: 0 0 8px rgba(255, 228, 174, 0.7);
+}
+
+.fx-outcome-defeat {
+  background: radial-gradient(circle at center, rgba(20, 20, 20, 0.5), rgba(10, 10, 10, 0.83));
+  color: #e3e3e3;
+}
+
+.ash-layer {
+  position: absolute;
+  inset: 0;
+}
+
+.ash {
+  position: absolute;
+  top: -8%;
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(220, 220, 220, 0.65);
+  animation-name: ashFall;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+@keyframes ashFall {
+  0% {
+    transform: translateY(-5%) translateX(0);
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateY(115%) translateX(-14px);
+    opacity: 0;
+  }
+}
+
+@media (max-width: 900px) {
+  .map-wrap {
+    height: 360px;
+  }
+
+  .map-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

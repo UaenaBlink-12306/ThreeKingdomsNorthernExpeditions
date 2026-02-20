@@ -1,0 +1,1480 @@
+{
+  "start_node": "ch1_jieting_choice",
+  "nodes": [
+    {
+      "id": "ch1_jieting_choice",
+      "node_type": "choice",
+      "chapter": 1,
+      "phase": "campaign",
+      "text": "街亭守将未定，军议争执不下。你将如何用人？",
+      "options": [
+        {
+          "id": "ma_su",
+          "label": "任命马谡守街亭",
+          "next": "ch1_jieting_check_masu",
+          "effects": {
+            "set_flags": {
+              "jieting_masu": true
+            },
+            "delta": {
+              "morale": 2,
+              "politics": -2
+            },
+            "log": "你任命马谡镇守街亭，奇谋有余，经验不足。"
+          }
+        },
+        {
+          "id": "veteran",
+          "label": "改派老将守街亭",
+          "next": "ch1_jieting_check_veteran",
+          "effects": {
+            "set_flags": {
+              "jieting_masu": false
+            },
+            "delta": {
+              "morale": 1,
+              "politics": 1
+            },
+            "log": "你改派老将驻守街亭，军中更为稳妥。"
+          }
+        }
+      ],
+      "meta": {
+        "location": "hanzhong",
+        "gain_control": [],
+        "lose_control": [],
+        "route_id": "hanzhong_to_jieting"
+      }
+    },
+    {
+      "id": "ch1_jieting_check_masu",
+      "node_type": "check",
+      "chapter": 1,
+      "phase": "campaign",
+      "text": "街亭战报将至。",
+      "check": "jieting_masu",
+      "success_next": "ch1_longyou_disposal",
+      "fail_next": "recover_hub",
+      "success_effects": {
+        "set_flags": {
+          "jieting_held": true
+        },
+        "delta": {
+          "longyou_turns": 1,
+          "morale": 4,
+          "wei_pressure": 1
+        },
+        "log": "街亭惊险守住，陇右局面暂稳。"
+      },
+      "fail_effects": {
+        "set_flags": {
+          "jieting_held": false
+        },
+        "delta": {
+          "food": -10,
+          "morale": -8,
+          "wei_pressure": 2
+        },
+        "log": "街亭失利，前线被迫后撤，转入整备。"
+      },
+      "meta": {
+        "location": "jieting",
+        "gain_control": [],
+        "lose_control": [],
+        "route_id": null
+      }
+    },
+    {
+      "id": "ch1_jieting_check_veteran",
+      "node_type": "check",
+      "chapter": 1,
+      "phase": "campaign",
+      "text": "街亭战报将至。",
+      "check": "jieting_veteran",
+      "success_next": "ch1_longyou_disposal",
+      "fail_next": "recover_hub",
+      "success_effects": {
+        "set_flags": {
+          "jieting_held": true
+        },
+        "delta": {
+          "longyou_turns": 1,
+          "morale": 3,
+          "wei_pressure": 1
+        },
+        "log": "老将稳守街亭，陇右门户暂固。"
+      },
+      "fail_effects": {
+        "set_flags": {
+          "jieting_held": false
+        },
+        "delta": {
+          "food": -8,
+          "morale": -6,
+          "wei_pressure": 2
+        },
+        "log": "魏军压迫过强，街亭仍告失守，先求止损。"
+      },
+      "meta": {
+        "location": "jieting",
+        "gain_control": [],
+        "lose_control": [],
+        "route_id": null
+      }
+    },
+    {
+      "id": "ch1_longyou_disposal",
+      "node_type": "choice",
+      "chapter": 1,
+      "phase": "campaign",
+      "text": "街亭之后，陇右诸郡观望，你如何处置？",
+      "options": [
+        {
+          "id": "appease",
+          "label": "安抚羌胡，修筑营寨",
+          "next": "ch1_rebellion_check",
+          "effects": {
+            "delta": {
+              "food": -8,
+              "politics": 2,
+              "morale": 1
+            },
+            "log": "你选择以安抚与修筑并行，推进较慢但更稳。"
+          }
+        },
+        {
+          "id": "levy",
+          "label": "急征粮草，强压地方",
+          "next": "ch1_rebellion_check",
+          "effects": {
+            "delta": {
+              "food": 12,
+              "morale": -3,
+              "politics": -3,
+              "wei_pressure": 1
+            },
+            "log": "你强征后勤，短期有利，地方怨气积聚。"
+          }
+        }
+      ],
+      "meta": {
+        "location": "jieting",
+        "gain_control": [
+          "jieting"
+        ],
+        "lose_control": [],
+        "route_id": "jieting_to_longyou"
+      }
+    },
+    {
+      "id": "ch1_rebellion_check",
+      "node_type": "check",
+      "chapter": 1,
+      "phase": "campaign",
+      "text": "陇右地方稳定性出现波动。",
+      "check": "longyou_rebellion",
+      "success_next": "ch1_end",
+      "fail_next": "court_hub",
+      "success_effects": {
+        "delta": {
+          "longyou_turns": 1,
+          "morale": 2
+        },
+        "log": "地方动荡被及时压住，陇右控制再续一回。"
+      },
+      "fail_effects": {
+        "delta": {
+          "morale": -5,
+          "politics": -4,
+          "wei_pressure": 1
+        },
+        "log": "朝中对前线责难四起，需先回朝稳盘。"
+      },
+      "meta": {
+        "location": "longyou",
+        "gain_control": [],
+        "lose_control": [],
+        "route_id": null
+      }
+    },
+    {
+      "id": "ch1_end",
+      "node_type": "choice",
+      "chapter": 2,
+      "phase": "campaign",
+      "text": "第一阶段结束，战线转入长期后勤较量。",
+      "options": [
+        {
+          "id": "enter_ch2",
+          "label": "进入第二章：后勤与陇右经营",
+          "next": "ch2_logistics_route",
+          "effects": {
+            "set_chapter": 2,
+            "log": "北伐进入第二章。"
+          }
+        }
+      ],
+      "meta": {
+        "location": "longyou",
+        "gain_control": [
+          "longyou"
+        ],
+        "lose_control": [],
+        "route_id": "longyou_ops"
+      }
+    },
+    {
+      "id": "ch2_logistics_route",
+      "node_type": "choice",
+      "chapter": 2,
+      "phase": "campaign",
+      "text": "你需要决定本回合主后勤路线。",
+      "options": [
+        {
+          "id": "qinling_route",
+          "label": "秦岭险道运粮（收益高，风险高）",
+          "next": "ch2_supply_harass_check",
+          "effects": {
+            "delta": {
+              "food": 12,
+              "wei_pressure": 1,
+              "longyou_turns": 1
+            },
+            "log": "险道运粮成功展开，魏军注意力上升。"
+          }
+        },
+        {
+          "id": "han_route",
+          "label": "汉水平线运粮（稳健）",
+          "next": "ch2_supply_harass_check",
+          "effects": {
+            "delta": {
+              "food": 6,
+              "morale": 2,
+              "longyou_turns": 1
+            },
+            "log": "你选择稳健路线，补给稳定但效率一般。"
+          }
+        },
+        {
+          "id": "forced_levy",
+          "label": "加派征发，短期补粮",
+          "next": "court_hub",
+          "effects": {
+            "delta": {
+              "food": 18,
+              "morale": -4,
+              "politics": -3,
+              "wei_pressure": 1,
+              "longyou_turns": 1
+            },
+            "log": "前线补给暴增，但朝野与地方压力上行。"
+          }
+        }
+      ],
+      "meta": {
+        "location": "longyou",
+        "gain_control": [],
+        "lose_control": [],
+        "route_id": "longyou_ops"
+      }
+    },
+    {
+      "id": "ch2_supply_harass_check",
+      "node_type": "check",
+      "chapter": 2,
+      "phase": "campaign",
+      "text": "魏军骑兵正在试探性袭扰粮道。",
+      "check": "supply_harass",
+      "success_next": "ch2_wood_ox_choice",
+      "fail_next": "defense_hub",
+      "success_effects": {
+        "delta": {
+          "food": 5,
+          "morale": 1
+        },
+        "log": "粮道暂时稳住。"
+      },
+      "fail_effects": {
+        "delta": {
+          "food": -15,
+          "morale": -4,
+          "wei_pressure": 1
+        },
+        "log": "粮道受损，前线被迫进入防御整备。"
+      },
+      "meta": {
+        "location": "longyou",
+        "gain_control": [],
+        "lose_control": [],
+        "route_id": null
+      }
+    },
+    {
+      "id": "ch2_wood_ox_choice",
+      "node_type": "choice",
+      "chapter": 2,
+      "phase": "campaign",
+      "text": "是否推进木牛流马体系？",
+      "options": [
+        {
+          "id": "build_wood_ox",
+          "label": "全力打造木牛流马",
+          "next": "ch2_court_infighting_check",
+          "effects": {
+            "set_flags": {
+              "wood_ox_done": true
+            },
+            "delta": {
+              "food": 15,
+              "politics": -1
+            },
+            "log": "木牛流马上线，后勤效率显著提升。"
+          }
+        },
+        {
+          "id": "keep_classic",
+          "label": "维持传统转运",
+          "next": "ch2_court_infighting_check",
+          "effects": {
+            "delta": {
+              "food": 4,
+              "morale": 1
+            },
+            "log": "你保守推进，稳定但上限有限。"
+          }
+        }
+      ],
+      "meta": {
+        "location": "longyou",
+        "gain_control": [],
+        "lose_control": [],
+        "route_id": "longyou_ops"
+      }
+    },
+    {
+      "id": "ch2_court_infighting_check",
+      "node_type": "check",
+      "chapter": 2,
+      "phase": "campaign",
+      "text": "朝堂对北伐消耗的争论升级。",
+      "check": "court_infighting",
+      "success_next": "ch2_progress_gate",
+      "fail_next": "court_hub",
+      "success_effects": {
+        "delta": {
+          "politics": 2,
+          "morale": 1
+        },
+        "log": "你暂时压住朝议，继续经营前线。"
+      },
+      "fail_effects": {
+        "delta": {
+          "politics": -4,
+          "morale": -2,
+          "wei_pressure": 1
+        },
+        "log": "朝中掣肘加剧，需回朝处理。"
+      },
+      "meta": {
+        "location": "longyou",
+        "gain_control": [],
+        "lose_control": [],
+        "route_id": null
+      }
+    },
+    {
+      "id": "ch2_progress_gate",
+      "node_type": "choice",
+      "chapter": 2,
+      "phase": "campaign",
+      "text": "陇右是否已稳固到可北进关中？",
+      "options": [
+        {
+          "id": "continue_longyou",
+          "label": "继续经营陇右",
+          "next": "ch2_logistics_route",
+          "effects": {
+            "log": "你决定再经营一轮陇右基础。"
+          }
+        },
+        {
+          "id": "advance_ch3",
+          "label": "进入第三章：寻机诱魏",
+          "condition": "longyou_ready",
+          "next": "ch3_strategy_choice",
+          "effects": {
+            "set_chapter": 3,
+            "log": "陇右达到阶段目标，北伐进入第三章。"
+          }
+        }
+      ],
+      "meta": {
+        "location": "longyou",
+        "gain_control": [],
+        "lose_control": [],
+        "route_id": "longyou_ops"
+      }
+    },
+    {
+      "id": "ch3_strategy_choice",
+      "node_type": "choice",
+      "chapter": 3,
+      "phase": "campaign",
+      "text": "魏军坚守不出，你选择何种节奏？",
+      "options": [
+        {
+          "id": "raid",
+          "label": "袭扰牵制，逼其失衡",
+          "next": "ch3_ziwu_choice",
+          "effects": {
+            "delta": {
+              "morale": 1,
+              "wei_pressure": 1,
+              "food": -6
+            },
+            "log": "小规模袭扰展开，战线温度升高。"
+          }
+        },
+        {
+          "id": "fortify",
+          "label": "固守蓄锐，等待破绽",
+          "next": "ch3_ziwu_choice",
+          "effects": {
+            "delta": {
+              "food": -2,
+              "morale": 2,
+              "wei_pressure": -1
+            },
+            "log": "你选择稳住阵线，耐心积势。"
+          }
+        }
+      ],
+      "meta": {
+        "location": "longyou",
+        "gain_control": [],
+        "lose_control": [],
+        "route_id": "longyou_to_qishan"
+      }
+    },
+    {
+      "id": "ch3_ziwu_choice",
+      "node_type": "choice",
+      "chapter": 3,
+      "phase": "campaign",
+      "text": "子午谷奇谋再被提起，是否采纳？",
+      "options": [
+        {
+          "id": "accept_ziwu",
+          "label": "采纳奇谋，搏取战机",
+          "next": "ch3_wei_sortie_check",
+          "effects": {
+            "delta": {
+              "morale": 3,
+              "politics": -2,
+              "food": -8,
+              "wei_pressure": 2
+            },
+            "log": "奇谋启动，风险与收益同步放大。"
+          }
+        },
+        {
+          "id": "reject_ziwu",
+          "label": "否决奇谋，稳扎稳打",
+          "next": "ch3_wei_sortie_check",
+          "effects": {
+            "delta": {
+              "morale": -1,
+              "politics": 1
+            },
+            "log": "你拒绝冒进，改走稳健推进。"
+          }
+        }
+      ],
+      "meta": {
+        "location": "qishan",
+        "gain_control": [
+          "qishan"
+        ],
+        "lose_control": [],
+        "route_id": null
+      }
+    },
+    {
+      "id": "ch3_wei_sortie_check",
+      "node_type": "check",
+      "chapter": 3,
+      "phase": "campaign",
+      "text": "魏军是否被迫出战，成为局势关键。",
+      "check": "wei_sortie",
+      "success_next": "ch3_assault_choice",
+      "fail_next": "recover_hub",
+      "success_effects": {
+        "delta": {
+          "morale": 4,
+          "wei_pressure": 1,
+          "longyou_turns": 1
+        },
+        "log": "魏军被迫应战，蜀军获得阶段主动。"
+      },
+      "fail_effects": {
+        "delta": {
+          "food": -10,
+          "morale": -4,
+          "wei_pressure": 1
+        },
+        "log": "司马懿继续龟缩，前线补给先行吃紧。"
+      },
+      "meta": {
+        "location": "qishan",
+        "gain_control": [],
+        "lose_control": [],
+        "route_id": null
+      }
+    },
+    {
+      "id": "ch3_assault_choice",
+      "node_type": "choice",
+      "chapter": 3,
+      "phase": "campaign",
+      "text": "是否在局部优势下组织强攻？",
+      "options": [
+        {
+          "id": "probe_assault",
+          "label": "有限强攻，试探防线",
+          "next": "ch3_end",
+          "effects": {
+            "delta": {
+              "food": -6,
+              "morale": 1,
+              "wei_pressure": 1,
+              "longyou_turns": 1
+            },
+            "log": "你发动试探强攻，虽未决战但巩固了声势。"
+          }
+        },
+        {
+          "id": "pull_back",
+          "label": "收束兵线，优先整补",
+          "next": "recover_hub",
+          "effects": {
+            "delta": {
+              "morale": -2,
+              "food": 2
+            },
+            "log": "你主动收束战线，准备下一轮筹划。"
+          }
+        }
+      ],
+      "meta": {
+        "location": "qishan",
+        "gain_control": [],
+        "lose_control": [],
+        "route_id": null
+      }
+    },
+    {
+      "id": "ch3_end",
+      "node_type": "choice",
+      "chapter": 4,
+      "phase": "campaign",
+      "text": "北伐进入第四章：五丈原长期对峙。",
+      "options": [
+        {
+          "id": "enter_ch4",
+          "label": "进入第四章",
+          "next": "ch4_wuzhang_loop",
+          "effects": {
+            "set_chapter": 4,
+            "log": "大军转入五丈原对峙。"
+          }
+        }
+      ],
+      "meta": {
+        "location": "qishan",
+        "gain_control": [],
+        "lose_control": [],
+        "route_id": "qishan_to_wuzhangyuan"
+      }
+    },
+    {
+      "id": "ch4_wuzhang_loop",
+      "node_type": "choice",
+      "chapter": 4,
+      "phase": "campaign",
+      "text": "五丈原战线拉锯，丞相体力与国力都在消耗。",
+      "options": [
+        {
+          "id": "wear_down",
+          "label": "持续消耗，缓压前推",
+          "next": "ch4_sortie_check",
+          "effects": {
+            "delta": {
+              "food": -8,
+              "morale": 1,
+              "wei_pressure": 1
+            },
+            "log": "你维持高压消耗节奏。"
+          }
+        },
+        {
+          "id": "seek_decisive",
+          "label": "谋求决战机会",
+          "next": "ch4_sortie_check",
+          "effects": {
+            "delta": {
+              "food": -12,
+              "morale": 2,
+              "wei_pressure": 2
+            },
+            "log": "你主动提高战役强度，尝试逼战。"
+          }
+        },
+        {
+          "id": "rebuild_camp",
+          "label": "暂缓攻势，回整防线",
+          "next": "recover_hub",
+          "effects": {
+            "delta": {
+              "food": 6,
+              "morale": -1
+            },
+            "log": "你暂缓前推，优先修复补给与战线。"
+          }
+        }
+      ],
+      "meta": {
+        "location": "wuzhangyuan",
+        "gain_control": [
+          "wuzhangyuan"
+        ],
+        "lose_control": [],
+        "route_id": "wuzhangyuan_ops"
+      }
+    },
+    {
+      "id": "ch4_sortie_check",
+      "node_type": "check",
+      "chapter": 4,
+      "phase": "campaign",
+      "text": "司马懿会否冒险出战仍难判断。",
+      "check": "wuzhang_sortie",
+      "success_next": "ch4_final_gate",
+      "fail_next": "defense_hub",
+      "success_effects": {
+        "delta": {
+          "morale": 2,
+          "wei_pressure": 1,
+          "longyou_turns": 1
+        },
+        "log": "魏军出现破绽，关中决战窗口扩大。"
+      },
+      "fail_effects": {
+        "delta": {
+          "morale": -3,
+          "food": -8,
+          "wei_pressure": 1
+        },
+        "log": "魏军依旧龟守，反制压力陡增。"
+      },
+      "meta": {
+        "location": "wuzhangyuan",
+        "gain_control": [],
+        "lose_control": [],
+        "route_id": null
+      }
+    },
+    {
+      "id": "ch4_final_gate",
+      "node_type": "choice",
+      "chapter": 4,
+      "phase": "campaign",
+      "text": "是否具备冲击关中的资格？",
+      "options": [
+        {
+          "id": "keep_pressure",
+          "label": "继续五丈原对峙",
+          "next": "ch4_wuzhang_loop",
+          "effects": {
+            "delta": {
+              "longyou_turns": 1
+            },
+            "log": "你继续累积战役条件。"
+          }
+        },
+        {
+          "id": "launch_final",
+          "label": "进入最终章：攻关中",
+          "condition": "can_enter_final",
+          "next": "final_route_choice",
+          "effects": {
+            "set_chapter": 5,
+            "set_phase": "final",
+            "log": "你判定时机成熟，准备强攻关中。"
+          }
+        },
+        {
+          "id": "back_to_court",
+          "label": "先稳朝局再战",
+          "next": "court_hub",
+          "effects": {
+            "delta": {
+              "food": 8,
+              "morale": -1
+            },
+            "log": "你暂缓终局推进，先回朝稳盘。"
+          }
+        }
+      ],
+      "meta": {
+        "location": "wuzhangyuan",
+        "gain_control": [],
+        "lose_control": [],
+        "route_id": "wuzhangyuan_ops"
+      }
+    },
+    {
+      "id": "final_route_choice",
+      "node_type": "choice",
+      "chapter": 5,
+      "phase": "final",
+      "text": "最终章：关中门户已现，你选择何种攻关路线？",
+      "options": [
+        {
+          "id": "fast_strike",
+          "label": "疾袭长安（低胜率高回报）",
+          "condition": "can_attack_changan",
+          "next": "final_changan_fast_check",
+          "effects": {
+            "delta": {
+              "food": -15,
+              "morale": 2,
+              "wei_pressure": 1
+            },
+            "log": "你下令疾袭长安，全军冒险前压。"
+          }
+        },
+        {
+          "id": "steady_siege",
+          "label": "稳步围攻（相对稳妥）",
+          "condition": "can_attack_changan",
+          "next": "final_changan_steady_check",
+          "effects": {
+            "delta": {
+              "food": -10,
+              "morale": 1
+            },
+            "log": "你选择稳围长安，消耗战开始。"
+          }
+        },
+        {
+          "id": "postpone_attack",
+          "label": "暂缓攻城，先守前线",
+          "next": "defense_hub",
+          "effects": {
+            "delta": {
+              "morale": -2,
+              "food": 4
+            },
+            "log": "你放弃本轮攻城，转入防线稳固。"
+          }
+        }
+      ],
+      "meta": {
+        "location": "wuzhangyuan",
+        "gain_control": [],
+        "lose_control": [],
+        "route_id": "wuzhangyuan_to_changan"
+      }
+    },
+    {
+      "id": "final_changan_fast_check",
+      "node_type": "check",
+      "chapter": 5,
+      "phase": "final",
+      "text": "疾袭长安进入决胜检定。",
+      "check": "changan_assault_fast",
+      "success_next": "final_hold_choice",
+      "fail_next": "defense_hub",
+      "success_effects": {
+        "delta": {
+          "guanzhong_turns": 1,
+          "morale": 3,
+          "wei_pressure": 2
+        },
+        "log": "长安外郭被突破，关中控制开始累计。"
+      },
+      "fail_effects": {
+        "delta": {
+          "morale": -6,
+          "food": -15,
+          "wei_pressure": 2
+        },
+        "set_guanzhong_reset": true,
+        "log": "疾袭受挫，战线回落，需先防守整备。"
+      },
+      "meta": {
+        "location": "changan",
+        "gain_control": [],
+        "lose_control": [],
+        "route_id": null
+      }
+    },
+    {
+      "id": "final_changan_steady_check",
+      "node_type": "check",
+      "chapter": 5,
+      "phase": "final",
+      "text": "围攻长安进入关键检定。",
+      "check": "changan_assault_steady",
+      "success_next": "final_hold_choice",
+      "fail_next": "recover_hub",
+      "success_effects": {
+        "delta": {
+          "guanzhong_turns": 1,
+          "morale": 2,
+          "wei_pressure": 1
+        },
+        "log": "围攻奏效，长安局势松动。"
+      },
+      "fail_effects": {
+        "delta": {
+          "morale": -4,
+          "food": -10,
+          "wei_pressure": 1
+        },
+        "set_guanzhong_reset": true,
+        "log": "围攻未成，转入整备线。"
+      },
+      "meta": {
+        "location": "changan",
+        "gain_control": [],
+        "lose_control": [],
+        "route_id": null
+      }
+    },
+    {
+      "id": "final_hold_choice",
+      "node_type": "choice",
+      "chapter": 5,
+      "phase": "final",
+      "text": "你已踏入关中，但反扑随时可能到来。",
+      "options": [
+        {
+          "id": "hold_one_turn",
+          "label": "继续固守一回合",
+          "next": "final_hold_check",
+          "effects": {
+            "delta": {
+              "food": -10,
+              "morale": 1
+            },
+            "log": "你下令全线固守，等待关中控制累计。"
+          }
+        },
+        {
+          "id": "reorganize",
+          "label": "回朝稳政后再战",
+          "next": "court_hub",
+          "effects": {
+            "delta": {
+              "food": 5,
+              "morale": -2
+            },
+            "set_guanzhong_reset": true,
+            "log": "你暂退整政，关中控制累计被打断。"
+          }
+        }
+      ],
+      "meta": {
+        "location": "changan",
+        "gain_control": [
+          "changan"
+        ],
+        "lose_control": [],
+        "route_id": "changan_ops"
+      }
+    },
+    {
+      "id": "final_hold_check",
+      "node_type": "check",
+      "chapter": 5,
+      "phase": "final",
+      "text": "魏军反扑压来，关中防线承受冲击。",
+      "check": "guanzhong_hold",
+      "success_next": "final_after_hold",
+      "fail_next": "final_guanzhong_lost",
+      "success_effects": {
+        "delta": {
+          "guanzhong_turns": 1,
+          "morale": 2,
+          "wei_pressure": 1
+        },
+        "log": "防线稳住，关中控制再累计一回。"
+      },
+      "fail_effects": {
+        "delta": {
+          "morale": -5,
+          "food": -8,
+          "wei_pressure": 2
+        },
+        "set_guanzhong_reset": true,
+        "log": "关中防线被撕开，本轮控制清零。"
+      },
+      "meta": {
+        "location": "changan",
+        "gain_control": [],
+        "lose_control": [],
+        "route_id": "changan_ops"
+      }
+    },
+    {
+      "id": "final_after_hold",
+      "node_type": "choice",
+      "chapter": 5,
+      "phase": "final",
+      "text": "关中局势仍在摇摆，你要继续顶住吗？",
+      "options": [
+        {
+          "id": "claim_victory",
+          "label": "宣告关中已稳，完成北伐目标",
+          "condition": "guanzhong_ready",
+          "next": "WIN",
+          "effects": {
+            "log": "你稳住关中并维持陇右，北伐目标达成。"
+          }
+        },
+        {
+          "id": "continue_hold",
+          "label": "继续坚守关中",
+          "next": "final_hold_check",
+          "effects": {
+            "delta": {
+              "food": -9,
+              "morale": 1
+            },
+            "log": "你选择再守一轮，胜负悬于一线。"
+          }
+        },
+        {
+          "id": "fallback_defense",
+          "label": "暂退防线，避免全崩",
+          "next": "final_guanzhong_lost",
+          "effects": {
+            "set_guanzhong_reset": true,
+            "delta": {
+              "morale": -2,
+              "food": 2
+            },
+            "log": "你主动后撤，关中控制累计归零。"
+          }
+        }
+      ],
+      "meta": {
+        "location": "changan",
+        "gain_control": [],
+        "lose_control": [],
+        "route_id": "changan_ops"
+      }
+    },
+    {
+      "id": "final_guanzhong_lost",
+      "node_type": "choice",
+      "chapter": 5,
+      "phase": "defense",
+      "text": "?????????????????????",
+      "options": [
+        {
+          "id": "retreat_hanzhong",
+          "label": "????????",
+          "next": "defense_hub",
+          "effects": {
+            "log": "?????????????????????"
+          }
+        }
+      ],
+      "meta": {
+        "location": "changan",
+        "gain_control": [],
+        "lose_control": [
+          "changan"
+        ],
+        "route_id": null
+      }
+    },
+    {
+      "id": "recover_hub",
+      "node_type": "choice",
+      "phase": "recover",
+      "text": "整备期：你需要在伤亡、粮草与士气之间做取舍。",
+      "options": [
+        {
+          "id": "recover_food",
+          "label": "优先补粮",
+          "next": "recover_router",
+          "effects": {
+            "delta": {
+              "food": 20,
+              "morale": 1,
+              "doom": 1
+            },
+            "log": "整备重点转向粮草。"
+          }
+        },
+        {
+          "id": "recover_morale",
+          "label": "优先安抚军心",
+          "next": "recover_router",
+          "effects": {
+            "delta": {
+              "morale": 5,
+              "food": -6
+            },
+            "log": "你重点安抚军心，恢复作战意志。"
+          }
+        },
+        {
+          "id": "rebuild_longyou",
+          "label": "重建陇右防线",
+          "condition": "chapter_ge_5",
+          "next": "recover_router",
+          "effects": {
+            "set_longyou_collapsed": false,
+            "delta": {
+              "food": -8,
+              "longyou_turns": 1
+            },
+            "log": "你抽调兵力重建陇右防线。"
+          }
+        }
+      ],
+      "meta": {
+        "location": "hanzhong",
+        "gain_control": [],
+        "lose_control": [],
+        "route_id": null
+      }
+    },
+    {
+      "id": "recover_router",
+      "node_type": "choice",
+      "phase": "recover",
+      "text": "整备完成，选择回到哪条战线。",
+      "options": [
+        {
+          "id": "to_ch1",
+          "label": "返回第一章战线",
+          "condition": "chapter_is_1",
+          "next": "ch1_longyou_disposal",
+          "effects": {
+            "set_phase": "campaign"
+          }
+        },
+        {
+          "id": "to_ch2",
+          "label": "返回第二章战线",
+          "condition": "chapter_is_2",
+          "next": "ch2_logistics_route",
+          "effects": {
+            "set_phase": "campaign"
+          }
+        },
+        {
+          "id": "to_ch3",
+          "label": "返回第三章战线",
+          "condition": "chapter_is_3",
+          "next": "ch3_strategy_choice",
+          "effects": {
+            "set_phase": "campaign"
+          }
+        },
+        {
+          "id": "to_ch4",
+          "label": "返回第四章战线",
+          "condition": "chapter_is_4",
+          "next": "ch4_wuzhang_loop",
+          "effects": {
+            "set_phase": "campaign"
+          }
+        },
+        {
+          "id": "to_final",
+          "label": "返回最终章战线",
+          "condition": "chapter_ge_5",
+          "next": "final_route_choice",
+          "effects": {
+            "set_phase": "final"
+          }
+        }
+      ],
+      "meta": {
+        "location": "hanzhong",
+        "gain_control": [],
+        "lose_control": [],
+        "route_id": null
+      }
+    },
+    {
+      "id": "court_hub",
+      "node_type": "choice",
+      "phase": "court",
+      "text": "朝堂缓冲区：你必须处理掣肘，维持政令与后勤。",
+      "options": [
+        {
+          "id": "appease_court",
+          "label": "协调派系，稳住中枢",
+          "next": "court_router",
+          "effects": {
+            "delta": {
+              "politics": 4,
+              "morale": -1
+            },
+            "log": "你以协调为主，朝局暂稳。"
+          }
+        },
+        {
+          "id": "suppress_faction",
+          "label": "强压争议，迅速决断",
+          "next": "court_router",
+          "effects": {
+            "delta": {
+              "politics": -2,
+              "morale": 1,
+              "wei_pressure": 1
+            },
+            "log": "你强压派系，效率提高但后患仍在。"
+          }
+        },
+        {
+          "id": "ask_budget",
+          "label": "请求增拨军资",
+          "next": "court_router",
+          "effects": {
+            "delta": {
+              "food": 6,
+              "politics": 1
+            },
+            "log": "军资获批，前线可再撑一阵。"
+          }
+        }
+      ],
+      "meta": {
+        "location": "chengdu",
+        "gain_control": [],
+        "lose_control": [],
+        "route_id": null
+      }
+    },
+    {
+      "id": "court_router",
+      "node_type": "choice",
+      "phase": "court",
+      "text": "朝议告一段落，重返前线。",
+      "options": [
+        {
+          "id": "court_to_ch1",
+          "label": "返回第一章战线",
+          "condition": "chapter_is_1",
+          "next": "ch1_longyou_disposal",
+          "effects": {
+            "set_phase": "campaign"
+          }
+        },
+        {
+          "id": "court_to_ch2",
+          "label": "返回第二章战线",
+          "condition": "chapter_is_2",
+          "next": "ch2_logistics_route",
+          "effects": {
+            "set_phase": "campaign"
+          }
+        },
+        {
+          "id": "court_to_ch3",
+          "label": "返回第三章战线",
+          "condition": "chapter_is_3",
+          "next": "ch3_strategy_choice",
+          "effects": {
+            "set_phase": "campaign"
+          }
+        },
+        {
+          "id": "court_to_ch4",
+          "label": "返回第四章战线",
+          "condition": "chapter_is_4",
+          "next": "ch4_wuzhang_loop",
+          "effects": {
+            "set_phase": "campaign"
+          }
+        },
+        {
+          "id": "court_to_final",
+          "label": "返回最终章战线",
+          "condition": "chapter_ge_5",
+          "next": "final_route_choice",
+          "effects": {
+            "set_phase": "final"
+          }
+        }
+      ],
+      "meta": {
+        "location": "chengdu",
+        "gain_control": [],
+        "lose_control": [],
+        "route_id": null
+      }
+    },
+    {
+      "id": "defense_hub",
+      "node_type": "choice",
+      "phase": "defense",
+      "text": "防御缓冲区：局部失利后需要先守住核心战线。",
+      "options": [
+        {
+          "id": "stabilize_front",
+          "label": "固守汉中防线",
+          "next": "defense_router",
+          "effects": {
+            "delta": {
+              "food": -10,
+              "morale": 3,
+              "doom": -1
+            },
+            "log": "你集中兵力固守要地，局势暂缓。"
+          }
+        },
+        {
+          "id": "field_battle",
+          "label": "冒险野战反击",
+          "next": "defense_core_check",
+          "effects": {
+            "delta": {
+              "food": -6,
+              "morale": 1
+            },
+            "log": "你选择冒险野战，成败都将放大。"
+          }
+        },
+        {
+          "id": "cede_outskirts",
+          "label": "放弃外线据点",
+          "next": "defense_router",
+          "effects": {
+            "delta": {
+              "morale": -3,
+              "wei_pressure": 1,
+              "longyou_turns": -2
+            },
+            "set_longyou_collapsed": true,
+            "set_guanzhong_reset": true,
+            "log": "你放弃外线据点，陇右防线出现崩盘风险。"
+          }
+        }
+      ],
+      "meta": {
+        "location": "hanzhong",
+        "gain_control": [],
+        "lose_control": [],
+        "route_id": null
+      }
+    },
+    {
+      "id": "defense_core_check",
+      "node_type": "check",
+      "phase": "defense",
+      "text": "野战反击成败关乎核心安危。",
+      "check": "doom_defense",
+      "success_next": "defense_router",
+      "fail_next": "DEFEAT_SHU",
+      "success_effects": {
+        "delta": {
+          "morale": 2,
+          "doom": -1
+        },
+        "log": "反击奏效，核心防线暂稳。"
+      },
+      "fail_effects": {
+        "delta": {
+          "morale": -5,
+          "wei_pressure": 2
+        },
+        "log": "反击失败导致核心失守，政权濒临覆灭。"
+      },
+      "meta": {
+        "location": "hanzhong",
+        "gain_control": [],
+        "lose_control": [],
+        "route_id": null
+      }
+    },
+    {
+      "id": "defense_router",
+      "node_type": "choice",
+      "phase": "defense",
+      "text": "防线修复后，选择回归战役节奏。",
+      "options": [
+        {
+          "id": "def_to_ch1",
+          "label": "返回第一章战线",
+          "condition": "chapter_is_1",
+          "next": "ch1_longyou_disposal",
+          "effects": {
+            "set_phase": "campaign"
+          }
+        },
+        {
+          "id": "def_to_ch2",
+          "label": "返回第二章战线",
+          "condition": "chapter_is_2",
+          "next": "ch2_logistics_route",
+          "effects": {
+            "set_phase": "campaign"
+          }
+        },
+        {
+          "id": "def_to_ch3",
+          "label": "返回第三章战线",
+          "condition": "chapter_is_3",
+          "next": "ch3_strategy_choice",
+          "effects": {
+            "set_phase": "campaign"
+          }
+        },
+        {
+          "id": "def_to_ch4",
+          "label": "返回第四章战线",
+          "condition": "chapter_is_4",
+          "next": "ch4_wuzhang_loop",
+          "effects": {
+            "set_phase": "campaign"
+          }
+        },
+        {
+          "id": "def_to_final",
+          "label": "返回最终章战线",
+          "condition": "chapter_ge_5",
+          "next": "final_route_choice",
+          "effects": {
+            "set_phase": "final"
+          }
+        }
+      ],
+      "meta": {
+        "location": "hanzhong",
+        "gain_control": [],
+        "lose_control": [],
+        "route_id": null
+      }
+    },
+    {
+      "id": "doom_total_offensive",
+      "node_type": "choice",
+      "phase": "defense",
+      "text": "Doom 阈值已触发：魏国发起总攻。你如何应对？",
+      "options": [
+        {
+          "id": "meet_head_on",
+          "label": "正面硬守",
+          "next": "doom_defense_check",
+          "effects": {
+            "delta": {
+              "food": -14,
+              "morale": 2
+            },
+            "log": "你选择正面硬守，押注士气与阵线。"
+          }
+        },
+        {
+          "id": "strategic_withdraw",
+          "label": "战略后撤换时间",
+          "next": "doom_defense_check",
+          "effects": {
+            "delta": {
+              "food": -8,
+              "morale": -2,
+              "longyou_turns": -2
+            },
+            "set_longyou_collapsed": true,
+            "set_guanzhong_reset": true,
+            "log": "你以空间换时间，但陇右控制出现崩盘。"
+          }
+        }
+      ],
+      "meta": {
+        "location": "hanzhong",
+        "gain_control": [],
+        "lose_control": [],
+        "route_id": null
+      }
+    },
+    {
+      "id": "doom_defense_check",
+      "node_type": "check",
+      "phase": "defense",
+      "text": "总攻防守检定。",
+      "check": "doom_defense",
+      "success_next": "recover_hub",
+      "fail_next": "DEFEAT_SHU",
+      "success_effects": {
+        "delta": {
+          "doom": -4,
+          "morale": 2
+        },
+        "set_flags": {
+          "doom_chain_active": false
+        },
+        "log": "总攻被勉强顶住，蜀军得以续命。"
+      },
+      "fail_effects": {
+        "delta": {
+          "morale": -8
+        },
+        "set_flags": {
+          "doom_chain_active": false
+        },
+        "log": "总攻失守，蜀汉大势已去。"
+      },
+      "meta": {
+        "location": "hanzhong",
+        "gain_control": [],
+        "lose_control": [],
+        "route_id": null
+      }
+    },
+    {
+      "id": "WIN",
+      "node_type": "terminal",
+      "phase": "final",
+      "text": "你稳住关中三回合且陇右未崩盘，北伐奇迹达成。",
+      "outcome": "WIN",
+      "meta": {
+        "location": "changan",
+        "gain_control": [
+          "changan"
+        ],
+        "lose_control": [],
+        "route_id": null
+      }
+    },
+    {
+      "id": "DEFEAT_SHU",
+      "node_type": "terminal",
+      "phase": "defense",
+      "text": "蜀汉核心战线全面失守，政权覆灭。",
+      "outcome": "DEFEAT_SHU",
+      "meta": {
+        "location": "chengdu",
+        "gain_control": [],
+        "lose_control": [
+          "hanzhong",
+          "qishan",
+          "jieting",
+          "longyou",
+          "wuzhangyuan",
+          "changan"
+        ],
+        "route_id": null
+      }
+    }
+  ]
+}

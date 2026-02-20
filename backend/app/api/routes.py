@@ -1,0 +1,39 @@
+﻿from __future__ import annotations
+
+from fastapi import APIRouter, HTTPException, Query
+
+from app.engine.runtime import GameEngine
+from app.models.requests import ActRequest, NewGameRequest, ResetRequest
+from app.models.state import GameState
+
+router = APIRouter(prefix="/api", tags=["game"])
+engine = GameEngine()
+
+
+@router.post("/new_game", response_model=GameState)
+def new_game(req: NewGameRequest) -> GameState:
+    return engine.new_game(game_id=req.game_id, seed=req.seed)
+
+
+@router.get("/state", response_model=GameState)
+def get_state(game_id: str = Query(...)) -> GameState:
+    try:
+        return engine.get_state(game_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.post("/act", response_model=GameState)
+def act(req: ActRequest) -> GameState:
+    try:
+        return engine.act(req.game_id, req.action, req.payload)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/reset")
+def reset(req: ResetRequest) -> dict[str, str]:
+    engine.reset(req.game_id)
+    return {"status": "ok"}
