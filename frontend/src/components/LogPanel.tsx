@@ -5,6 +5,7 @@ import type { DiffSummary } from "../utils/diff";
 import { compressLog } from "../utils/log";
 import { computeLogDelta } from "../utils/logDelta";
 import type { GameState } from "../types";
+import { playMechanicalClick } from "../utils/sound";
 
 interface LogPanelProps {
   log: string[];
@@ -52,8 +53,8 @@ export default function LogPanel({ log, prevLog, summary, state, prevState }: Lo
 
       <div className="log-toolbar">
         <div className="tabs">
-          <button type="button" onClick={() => setTab("delta")} disabled={tab === "delta"}>本回合战报（新增）</button>
-          <button type="button" onClick={() => setTab("history")} disabled={tab === "history"}>最近战报（历史）</button>
+          <button type="button" onClick={() => { playMechanicalClick(); setTab("delta"); }} disabled={tab === "delta"}>本回合战报（新增）</button>
+          <button type="button" onClick={() => { playMechanicalClick(); setTab("history"); }} disabled={tab === "history"}>最近战报（历史）</button>
         </div>
         <label className="raw-toggle">
           <input type="checkbox" checked={showRaw} onChange={(event) => setShowRaw(event.target.checked)} />

@@ -1244,6 +1244,20 @@
           }
         },
         {
+          "id": "final_replenish",
+          "label": "整备资源，准备攻关（最终章）",
+          "condition": "chapter_ge_5",
+          "next": "defense_router",
+          "effects": {
+            "delta": {
+              "food": 12,
+              "morale": 2,
+              "doom": 1
+            },
+            "log": "你利用防御间隙整备资源，为攻关做准备。"
+          }
+        },
+        {
           "id": "field_battle",
           "label": "冒险野战反击",
           "next": "defense_core_check",
@@ -1285,7 +1299,7 @@
       "text": "野战反击成败关乎核心安危。",
       "check": "doom_defense",
       "success_next": "defense_router",
-      "fail_next": "DEFEAT_SHU",
+      "fail_next": "recover_hub",
       "success_effects": {
         "delta": {
           "morale": 2,
@@ -1295,10 +1309,12 @@
       },
       "fail_effects": {
         "delta": {
-          "morale": -5,
-          "wei_pressure": 2
+          "morale": -10,
+          "wei_pressure": 4,
+          "doom": 3,
+          "food": -15
         },
-        "log": "反击失败导致核心失守，政权濒临覆灭。"
+        "log": "反击失败，核心防线岌岌可危，必须立即整备。若再失利，蜀汉将面临覆灭。"
       },
       "meta": {
         "location": "hanzhong",

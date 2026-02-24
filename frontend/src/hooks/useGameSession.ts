@@ -94,7 +94,9 @@ export function useGameSession() {
   }, [audioEnabled, setAudioEnabled]);
 
   useEffect(() => {
+    let mounted = true;
     async function boot() {
+      if (!mounted) return;
       setError("");
       const savedId = localStorage.getItem(GAME_ID_KEY);
       if (!savedId) {
@@ -102,22 +104,38 @@ export function useGameSession() {
         return;
       }
 
+      // 清理game_id格式，移除可能的冒号和数字后缀
+      const cleanGameId = savedId.split(':')[0].trim();
+      if (cleanGameId !== savedId) {
+        localStorage.setItem(GAME_ID_KEY, cleanGameId);
+      }
+
       try {
         await queryClient.fetchQuery({
-          queryKey: ["game", savedId],
-          queryFn: () => getState(savedId),
+          queryKey: ["game", cleanGameId],
+          queryFn: () => getState(cleanGameId),
           retry: 3,
           retryDelay: (attemptIndex) => Math.min(300 * 2 ** attemptIndex, 3_000),
           staleTime: 30_000,
         });
-        setGameId(savedId);
+        if (mounted) {
+          setGameId(cleanGameId);
+        }
       } catch {
-        await createGameMutation.mutateAsync();
+        if (mounted) {
+          // 如果game_id无效，清除localStorage并创建新游戏
+          localStorage.removeItem(GAME_ID_KEY);
+          await createGameMutation.mutateAsync();
+        }
       }
     }
 
     void boot();
-  }, [createGameMutation, queryClient, setError, setGameId]);
+    return () => {
+      mounted = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount
 
   useEffect(() => {
     const nextBusy = stateQuery.isFetching || createGameMutation.isPending || actMutation.isPending;

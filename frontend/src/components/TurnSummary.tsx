@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import type { DiffSummary } from "../utils/diff";
 import { explainTurn } from "../utils/explain";
 import type { GameState } from "../types";
+import { playMechanicalClick } from "../utils/sound";
 
 interface TurnSummaryProps {
   summary: DiffSummary;
@@ -26,7 +27,7 @@ export default function TurnSummary({ summary, state, prevState, deltaLog }: Tur
         ))}
       </ul>
       {summary.lines.length > limit ? (
-        <button type="button" onClick={() => setExpanded((prev) => !prev)}>
+        <button type="button" onClick={() => { playMechanicalClick(); setExpanded((prev) => !prev); }}>
           {expanded ? "收起变化" : "展开更多变化"}
         </button>
       ) : null}

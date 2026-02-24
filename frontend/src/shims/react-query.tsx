@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 
 type QueryKey = readonly unknown[];
 
@@ -100,16 +100,29 @@ export function useQuery<T>(options: QueryOptions<T>) {
   const [error, setError] = useState<unknown>(undefined);
   const [isFetching, setIsFetching] = useState(false);
 
-  useEffect(() => client.subscribe(options.queryKey, () => setData(client.getQueryData<T>(options.queryKey))), [client, options.queryKey]);
+  // Store latest options in ref to avoid dependency issues
+  const optionsRef = useRef(options);
+  optionsRef.current = options;
 
+  // Memoize queryKey string to avoid recreating subscription on every render
+  const queryKeyStr = useMemo(() => JSON.stringify(options.queryKey), [options.queryKey]);
+  
   useEffect(() => {
-    let active = true;
-    if (!options.enabled) {
+    return client.subscribe(options.queryKey, () => setData(client.getQueryData<T>(options.queryKey)));
+  }, [client, queryKeyStr]);
+
+  // Memoize enabled to avoid unnecessary re-fetches
+  const enabled = options.enabled !== false;
+  
+  useEffect(() => {
+    if (!enabled) {
       return;
     }
+    let active = true;
     setIsFetching(true);
+    // Use ref to get latest options without causing dependency issues
     client
-      .fetchQuery(options)
+      .fetchQuery(optionsRef.current)
       .then((next) => {
         if (!active) return;
         setData(next);
@@ -127,7 +140,7 @@ export function useQuery<T>(options: QueryOptions<T>) {
     return () => {
       active = false;
     };
-  }, [client, options]);
+  }, [client, queryKeyStr, enabled]);
 
   return useMemo(
     () => ({ data, isFetching, isError: Boolean(error), error }),

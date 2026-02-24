@@ -1,4 +1,5 @@
 import { AnimatePresence, motion } from "framer-motion";
+import { playMechanicalClick } from "../utils/sound";
 
 interface HelpDrawerProps {
   open: boolean;
@@ -21,7 +22,7 @@ export default function HelpDrawer({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          onClick={on_close}
+          onClick={() => { playMechanicalClick(); on_close(); }}
         >
           <motion.aside
             className="help-drawer panel"
@@ -33,7 +34,7 @@ export default function HelpDrawer({
           >
             <header className="help-header">
               <h2>术语与阶段参考</h2>
-              <button type="button" onClick={on_close}>关闭</button>
+              <button type="button" onClick={() => { playMechanicalClick(); on_close(); }}>关闭</button>
             </header>
             <ul>
               <li>campaign：主动推进战线。</li>

@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import type { OptionView } from "../types";
 import { AnimatePresence, motion } from "framer-motion";
+import { playMechanicalClick, playMechanicalPress } from "../utils/sound";
 
 interface EventPanelProps {
   text: string;
@@ -35,11 +36,13 @@ export default function EventPanel({
   );
 
   function dismissHint() {
+    playMechanicalClick();
     setHideHint(true);
     localStorage.setItem(EVENT_HELP_SEEN_KEY, "1");
   }
 
   function dismissOnboard() {
+    playMechanicalClick();
     setHideOnboard(true);
     localStorage.setItem(EVENT_ONBOARD_SEEN_KEY, "1");
   }
@@ -49,7 +52,7 @@ export default function EventPanel({
       <h2>当前事件</h2>
       <p className="action-prompt">{prompt}</p>
       {!hideOnboard && turn <= 1 ? (
-        <div className="event-onboard" onClick={dismissOnboard} role="button" tabIndex={0}>
+        <div className="event-onboard" onClick={() => { playMechanicalClick(); dismissOnboard(); }} role="button" tabIndex={0}>
           <div>赢：关中 3/3 且陇右稳定</div>
           <div>输：Doom 链条失败 / 核心失守</div>
           <div>每回合：先看变化 + Because，再决定选项</div>
@@ -76,7 +79,7 @@ export default function EventPanel({
       ) : null}
 
       {!hasOptions ? (
-        <button type="button" className="primary-cta" disabled={busy || !can_next_turn} onClick={onNextTurn}>
+        <button type="button" className="primary-cta" disabled={busy || !can_next_turn} onClick={() => { playMechanicalPress(); onNextTurn(); }}>
           继续下一回合
         </button>
       ) : null}
@@ -90,7 +93,7 @@ export default function EventPanel({
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.04, duration: 0.2 }}
             disabled={busy || Boolean(opt.disabled)}
-            onClick={() => onChoose(opt.id)}
+            onClick={() => { playMechanicalPress(); onChoose(opt.id); }}
           >
             {opt.label}
             {opt.disabled_reason ? `（不可选：${opt.disabled_reason}）` : ""}

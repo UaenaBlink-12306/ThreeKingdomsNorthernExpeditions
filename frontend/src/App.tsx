@@ -11,6 +11,7 @@ import HelpDrawer from "./components/HelpDrawer";
 import ObjectiveStrip from "./components/ObjectiveStrip";
 import { useGameSession } from "./hooks/useGameSession";
 import { diffState } from "./utils/diff";
+import { playMechanicalPress } from "./utils/sound";
 
 export default function App() {
   const {
@@ -59,7 +60,7 @@ export default function App() {
       </section>
 
       <section className="panel controls">
-        <button disabled={busy} onClick={() => void onNewGame()}>新游戏</button>
+        <button disabled={busy} onClick={() => { playMechanicalPress(); void onNewGame(); }}>新游戏</button>
         {canAct && hasDecisionOptions ? <span className="control-note">当前有选项可选，先在事件区做决策。</span> : null}
         <span>Game ID: {state.game_id}</span>
       </section>
