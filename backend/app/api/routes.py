@@ -2,13 +2,16 @@
 
 from fastapi import APIRouter, HTTPException, Query
 
+from app.assistant import DeepSeekConfigError, GameAssistantService
 from app.engine.runtime import GameEngine
+from app.models.chat import ChatRequest, ChatResponse
 from app.models.requests import ActRequest, NewGameRequest, ResetRequest
 from app.models.state import GameState
 from app.models.telemetry import ReplayView
 
 router = APIRouter(prefix="/api", tags=["game"])
 engine = GameEngine()
+assistant = GameAssistantService()
 
 
 @router.post("/new_game", response_model=GameState)
@@ -47,3 +50,13 @@ def get_replay(game_id: str = Query(...)) -> ReplayView:
 def reset(req: ResetRequest) -> dict[str, str]:
     engine.reset(req.game_id)
     return {"status": "ok"}
+
+
+@router.post("/chat", response_model=ChatResponse)
+def chat(req: ChatRequest) -> ChatResponse:
+    try:
+        return assistant.reply(req)
+    except DeepSeekConfigError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc

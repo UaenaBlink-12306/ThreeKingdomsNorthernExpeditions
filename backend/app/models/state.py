@@ -4,6 +4,7 @@ from enum import Enum
 
 from pydantic import BaseModel, Field
 
+from app.models.court import CourtState
 
 class Phase(str, Enum):
     CAMPAIGN = "campaign"
@@ -55,3 +56,4 @@ class GameState(BaseModel):
     route_progress: float = 0.0
     seed: int
     roll_count: int
+    court: CourtState = Field(default_factory=CourtState)

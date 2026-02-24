@@ -10,12 +10,22 @@ from typing import Any
 
 from app.engine import balance
 from app.engine.checks import roll_check
+from app.engine.court import (
+    apply_battle_turn_modifier,
+    apply_check_outcome_modifier,
+    begin_court_session,
+    fast_forward_court_session,
+    resolve_court_strategy,
+    settle_court_session,
+    should_trigger_court,
+)
 from app.engine.conditions import evaluate_condition
 from app.engine.effects import add_log, apply_effects
 from app.engine.graph import EventGraph, load_graph
 from app.engine.map_catalog import PLACE_ORDER
 from app.engine.repository import InMemoryRepository, StateRepository
 from app.engine.repository_sqlite import SQLiteRepository
+from app.models.court import CourtStrategy
 from app.models.event_graph import NodeType
 from app.models.state import EventView, GameState, OptionView, Outcome, Phase
 
@@ -87,6 +97,7 @@ class GameEngine:
         )
 
         self._set_node(session.state, self.graph.start_node)
+        self._maybe_start_court_on_phase_entry(session)
         self._resolve_checks(session)
         self._evaluate_outcome(session)
         self.repository.save(session)
@@ -94,6 +105,8 @@ class GameEngine:
 
     def get_state(self, game_id: str) -> GameState:
         session = self._require_session(game_id)
+        if self._ensure_court_session(session):
+            self.repository.save(session)
         return session.state
 
     def get_replay(self, game_id: str) -> dict[str, Any]:
@@ -112,6 +125,9 @@ class GameEngine:
         session = self._require_session(game_id)
         state = session.state
 
+        if self._ensure_court_session(session):
+            self.repository.save(session)
+
         if state.outcome != Outcome.ONGOING:
             return state
 
@@ -125,9 +141,28 @@ class GameEngine:
             option_id = payload.get("option_id")
             if not isinstance(option_id, str):
                 raise ValueError("choose_option requires payload.option_id")
-            self._choose_option(session, option_id)
+            if state.court.is_active:
+                self._court_strategy(session, self._legacy_option_to_strategy(option_id))
+            else:
+                self._choose_option(session, option_id)
         elif action == "next_turn":
-            self._next_turn(session)
+            if state.court.is_active:
+                self._court_fast_forward(session)
+            else:
+                self._next_turn(session)
+        elif action == "court_strategy":
+            strategy_raw = payload.get("strategy")
+            if not isinstance(strategy_raw, str):
+                raise ValueError("court_strategy requires payload.strategy")
+            self._court_strategy(session, strategy_raw)
+        elif action == "court_statement":
+            statement = payload.get("statement")
+            strategy_hint = payload.get("strategy_hint")
+            if not isinstance(statement, str) or not statement.strip():
+                raise ValueError("court_statement requires payload.statement")
+            self._court_statement(session, statement.strip(), strategy_hint if isinstance(strategy_hint, str) else None)
+        elif action == "court_fast_forward":
+            self._court_fast_forward(session)
         else:
             raise ValueError(f"Unsupported action: {action}")
 
@@ -203,6 +238,141 @@ class GameEngine:
 
     def _next_turn(self, session) -> None:
         state = session.state
+        if should_trigger_court(state):
+            begin_court_session(state, session.rng)
+            state.phase = Phase.COURT
+            return
+        self._advance_battle_turn(session)
+
+    def _court_strategy(self, session, strategy_raw: str) -> None:
+        state = session.state
+        if not state.court.is_active:
+            raise ValueError("Court session is not active.")
+        strategy = self._parse_strategy(strategy_raw)
+        settled = resolve_court_strategy(state, strategy, session.rng)
+        if settled and not state.court.is_active:
+            self._restore_phase_after_court(state)
+            self._advance_battle_turn(session)
+
+    def _court_statement(self, session, statement: str, strategy_hint: str | None) -> None:
+        state = session.state
+        if not state.court.is_active:
+            raise ValueError("Court session is not active.")
+
+        strategy = self._strategy_from_statement(statement, strategy_hint)
+        settled = resolve_court_strategy(state, strategy, session.rng, statement=statement)
+        if settled and not state.court.is_active:
+            self._restore_phase_after_court(state)
+            self._advance_battle_turn(session)
+
+    def _court_fast_forward(self, session) -> None:
+        state = session.state
+        if not state.court.is_active:
+            raise ValueError("Court session is not active.")
+        fast_forward_court_session(state, session.rng)
+        if state.court.is_active:
+            settle_court_session(state, force_timeout=True)
+        if not state.court.is_active:
+            self._restore_phase_after_court(state)
+            self._advance_battle_turn(session)
+
+    def _parse_strategy(self, strategy_raw: str) -> CourtStrategy:
+        normalized = strategy_raw.strip().lower()
+        aliases = {
+            "rational": CourtStrategy.RATIONAL,
+            "rational_argument": CourtStrategy.RATIONAL,
+            "reason": CourtStrategy.RATIONAL,
+            "authority": CourtStrategy.AUTHORITY,
+            "authority_pressure": CourtStrategy.AUTHORITY,
+            "pressure": CourtStrategy.AUTHORITY,
+            "emotional": CourtStrategy.EMOTIONAL,
+            "emotional_mobilization": CourtStrategy.EMOTIONAL,
+            "emotion": CourtStrategy.EMOTIONAL,
+        }
+        parsed = aliases.get(normalized)
+        if parsed is None:
+            raise ValueError("Unknown court strategy. Use rational_argument / authority_pressure / emotional_mobilization")
+        return parsed
+
+    def _legacy_option_to_strategy(self, option_id: str) -> str:
+        mapping = {
+            "appease_court": "rational_argument",
+            "suppress_faction": "authority_pressure",
+            "ask_budget": "emotional_mobilization",
+        }
+        return mapping.get(option_id, "rational_argument")
+
+    def _strategy_from_statement(self, statement: str, strategy_hint: str | None) -> CourtStrategy:
+        if strategy_hint:
+            try:
+                return self._parse_strategy(strategy_hint)
+            except ValueError:
+                pass
+
+        text = statement.lower()
+        rational_keywords = [
+            "evidence",
+            "feasible",
+            "supply",
+            "logistics",
+            "budget",
+            "risk",
+            "numbers",
+            "data",
+            "\u7cae",
+            "\u8865\u7ed9",
+            "\u53ef\u884c",
+            "\u8bc1\u636e",
+            "\u5236\u5ea6",
+            "\u98ce\u9669",
+        ]
+        authority_keywords = [
+            "edict",
+            "command",
+            "discipline",
+            "obey",
+            "accountability",
+            "authority",
+            "order",
+            "\u519b\u4ee4",
+            "\u547d\u4ee4",
+            "\u538b\u5236",
+            "\u95ee\u8d23",
+            "\u670d\u4ece",
+        ]
+        emotional_keywords = [
+            "morale",
+            "troops",
+            "people",
+            "hope",
+            "loyalty",
+            "momentum",
+            "spirit",
+            "\u58eb\u6c14",
+            "\u519b\u5fc3",
+            "\u6c11\u5fc3",
+            "\u5c06\u58eb",
+            "\u4e58\u80dc",
+        ]
+
+        rational_score = sum(1 for token in rational_keywords if token in text)
+        authority_score = sum(1 for token in authority_keywords if token in text)
+        emotional_score = sum(1 for token in emotional_keywords if token in text)
+
+        if authority_score > rational_score and authority_score >= emotional_score:
+            return CourtStrategy.AUTHORITY
+        if emotional_score > rational_score and emotional_score > authority_score:
+            return CourtStrategy.EMOTIONAL
+        return CourtStrategy.RATIONAL
+
+    def _restore_phase_after_court(self, state: GameState) -> None:
+        try:
+            state.phase = Phase(state.court.return_phase)
+        except ValueError:
+            state.phase = Phase.CAMPAIGN
+
+    def _advance_battle_turn(self, session) -> None:
+        state = session.state
         state.turn += 1
 
         doom_gain = 1
@@ -216,12 +386,27 @@ class GameEngine:
             doom_gain += balance.POST_ZHUGE_DOOM_BONUS
             state.politics = max(0, state.politics - balance.POST_ZHUGE_POLITICS_BONUS)
 
+        court_turn_delta = apply_battle_turn_modifier(state)
+        doom_gain += int(court_turn_delta["doom_delta"])
+        doom_gain = max(0, doom_gain)
+
         state.doom += doom_gain
-        add_log(state, f"第{state.turn}回合：战局推进，危机值 +{doom_gain}。")
+        add_log(state, f"Turn {state.turn}: battle advances, doom +{doom_gain}.")
+        if int(court_turn_delta["food_delta"]) or int(court_turn_delta["morale_delta"]):
+            add_log(
+                state,
+                (
+                    "Court edict applied: "
+                    f"food {int(court_turn_delta['food_delta']):+d} / "
+                    f"morale {int(court_turn_delta['morale_delta']):+d}."
+                ),
+            )
+        if bool(court_turn_delta["expired"]):
+            add_log(state, f"Court edict ended: {court_turn_delta['title']}.")
 
         if state.chapter == 4 and not state.flags.get("post_zhuge_era", False):
             state.health -= 1
-            add_log(state, "五丈原对峙拖长，丞相积劳成疾。")
+            add_log(state, "Wuzhang campaign drags on; Zhuge Liang health worsens.")
             self._trigger_post_zhuge_if_needed(state)
 
         if state.phase in {Phase.CAMPAIGN, Phase.FINAL} and state.active_route_id:
@@ -229,7 +414,7 @@ class GameEngine:
 
         if state.doom >= balance.DOOM_THRESHOLD and not state.flags.get("doom_chain_active", False):
             state.flags["doom_chain_active"] = True
-            add_log(state, "亡国危机爆发：魏国发动总攻。")
+            add_log(state, "State-collapse crisis: Wei launches total offensive.")
             self._transition(session, "doom_total_offensive")
 
     def _choose_option(self, session, option_id: str) -> None:
@@ -259,7 +444,13 @@ class GameEngine:
             node_id=next_node_id,
         )
         self._set_node(session.state, next_node_id)
+        self._maybe_start_court_on_phase_entry(session)
         self._resolve_checks(session)
+
+    def _maybe_start_court_on_phase_entry(self, session) -> None:
+        state = session.state
+        if state.phase == Phase.COURT and not state.court.is_active:
+            begin_court_session(state, session.rng)
 
     def _add_fx_token(self, state: GameState, token: str) -> None:
         add_log(state, token)
@@ -349,10 +540,24 @@ class GameEngine:
 
             if success:
                 apply_effects(state, node.success_effects)
+                state.court.momentum = min(4, state.court.momentum + 1)
                 next_node = node.success_next
             else:
                 apply_effects(state, node.fail_effects)
+                state.court.momentum = max(-4, state.court.momentum - 1)
                 next_node = node.fail_next
+
+            court_check_delta = apply_check_outcome_modifier(state, success=success)
+            if any(court_check_delta.values()):
+                add_log(
+                    state,
+                    (
+                        "朝议军令检定修正："
+                        f"粮草 {court_check_delta['food']:+d} / "
+                        f"士气 {court_check_delta['morale']:+d} / "
+                        f"Doom {court_check_delta['doom']:+d}。"
+                    ),
+                )
 
             self._trigger_post_zhuge_if_needed(state)
 
@@ -364,6 +569,7 @@ class GameEngine:
             self._add_fx_token(state, f"FX_CHECK|node={node.id}|result={result_text}|loc={next_location}")
 
             self._set_node(state, next_node)
+            self._maybe_start_court_on_phase_entry(session)
             self._evaluate_outcome(session)
             if state.outcome != Outcome.ONGOING:
                 break
@@ -401,3 +607,12 @@ class GameEngine:
         if session is None:
             raise KeyError(f"game_id not found: {game_id}")
         return session
+
+    def _ensure_court_session(self, session) -> bool:
+        state = session.state
+        if state.outcome != Outcome.ONGOING:
+            return False
+        if state.phase == Phase.COURT and not state.court.is_active:
+            begin_court_session(state, session.rng)
+            return True
+        return False

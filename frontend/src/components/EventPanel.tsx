@@ -7,6 +7,7 @@ interface EventPanelProps {
   text: string;
   options: OptionView[];
   busy: boolean;
+  dispatching: boolean;
   can_next_turn: boolean;
   turn: number;
   onChoose: (optionId: string) => void;
@@ -20,6 +21,7 @@ export default function EventPanel({
   text,
   options,
   busy,
+  dispatching,
   can_next_turn,
   turn,
   onChoose,
@@ -51,6 +53,7 @@ export default function EventPanel({
     <section className="panel event-panel">
       <h2>当前事件</h2>
       <p className="action-prompt">{prompt}</p>
+      {dispatching ? <p className="dispatch-status">指令已下达，正在传令并等待前线回报...</p> : null}
       {!hideOnboard && turn <= 1 ? (
         <div className="event-onboard" onClick={() => { playMechanicalClick(); dismissOnboard(); }} role="button" tabIndex={0}>
           <div>赢：关中 3/3 且陇右稳定</div>

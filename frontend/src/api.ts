@@ -1,6 +1,6 @@
-import type { GameState } from "./types";
+import type { AssistantRequest, AssistantResponse, GameState } from "./types";
 
-const API_BASE = "http://127.0.0.1:8000/api";
+const API_BASE = import.meta.env.VITE_API_BASE ?? "http://127.0.0.1:8000/api";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, {
@@ -45,5 +45,12 @@ export function reset(game_id?: string): Promise<{ status: string }> {
   return request<{ status: string }>("/reset", {
     method: "POST",
     body: JSON.stringify({ game_id }),
+  });
+}
+
+export function chatAssistant(payload: AssistantRequest): Promise<AssistantResponse> {
+  return request<AssistantResponse>("/chat", {
+    method: "POST",
+    body: JSON.stringify(payload),
   });
 }

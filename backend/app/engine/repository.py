@@ -3,7 +3,7 @@ from __future__ import annotations
 import base64
 import pickle
 import random
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Protocol
 
 from app.models.state import GameState
@@ -13,8 +13,8 @@ from app.models.state import GameState
 class GameSession:
     state: GameState
     rng: random.Random
-    diagnostics: list[dict[str, Any]]
-    action_history: list[dict[str, Any]]
+    diagnostics: list[dict[str, Any]] = field(default_factory=list)
+    action_history: list[dict[str, Any]] = field(default_factory=list)
 
     def serialize_state(self) -> str:
         return self.state.model_dump_json()

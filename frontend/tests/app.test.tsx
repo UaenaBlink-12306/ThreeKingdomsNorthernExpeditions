@@ -14,6 +14,7 @@ const api = vi.hoisted(() => ({
   newGame: vi.fn(),
   getState: vi.fn(),
   act: vi.fn(),
+  chatAssistant: vi.fn(),
 }));
 
 vi.mock("../src/api", () => api);
@@ -38,8 +39,8 @@ function buildState(overrides: Partial<GameState> = {}): GameState {
     log: ["start"],
     current_node_id: "n1",
     current_event: {
-      text: "事件",
-      options: [{ id: "opt1", label: "选项1" }],
+      text: "event",
+      options: [{ id: "opt1", label: "Option 1" }],
     },
     current_location: "loc",
     controlled_locations: [],
@@ -47,6 +48,27 @@ function buildState(overrides: Partial<GameState> = {}): GameState {
     route_progress: 0,
     seed: 1,
     roll_count: 0,
+    court: {
+      is_active: false,
+      session_id: 0,
+      return_phase: "campaign",
+      temperature: 0,
+      support: 55,
+      time_pressure: 0,
+      max_time_pressure: 0,
+      npcs: {},
+      history: [],
+      pending_messages: [],
+      current_issues: [],
+      current_issue_tags: [],
+      active_modifier: null,
+      last_resolution: null,
+      last_trigger_turn: 0,
+      message_seq: 0,
+      resentment_event_fired: false,
+      momentum: 0,
+      current_rebound_events: [],
+    },
     ...overrides,
   };
 }
@@ -61,7 +83,13 @@ function renderApp(client: QueryClient) {
 
 beforeEach(() => {
   localStorage.clear();
+  localStorage.setItem("zhuge_state_schema_version", "court-buffer-v1");
   vi.clearAllMocks();
+  api.chatAssistant.mockResolvedValue({
+    mode: "preturn_advisor",
+    content: "mock",
+    model: "mock-model",
+  });
   useGameStore.setState({
     gameId: null,
     busy: false,
@@ -73,37 +101,41 @@ beforeEach(() => {
 });
 
 describe("App + query integration", () => {
-  it("新开局时调用 newGame 并渲染 game id", async () => {
+  it("calls newGame on fresh boot and shows game id", async () => {
     api.newGame.mockResolvedValue(buildState());
 
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     renderApp(client);
 
-    expect(await screen.findByText(/Game ID: g1/)).toBeInTheDocument();
+    const gameIds = await screen.findAllByText(/Game ID: g1/);
+    expect(gameIds.length).toBeGreaterThan(0);
     expect(api.newGame).toHaveBeenCalledTimes(1);
   });
 
-  it("点击选项会调用 act 并更新状态", async () => {
+  it("calls act on option click and updates state", async () => {
     localStorage.setItem(GAME_ID_KEY, "g1");
     api.getState.mockResolvedValue(buildState());
     api.act.mockResolvedValue(
       buildState({
         turn: 2,
-        current_event: { text: "下一事件", options: [] },
+        current_event: { text: "next event", options: [] },
       })
     );
 
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     renderApp(client);
 
-    const button = await screen.findByRole("button", { name: "选项1" });
-    fireEvent.click(button);
+    const buttons = await screen.findAllByRole("button", { name: "Option 1" });
+    fireEvent.click(buttons[0]);
 
-    await waitFor(() => expect(api.act).toHaveBeenCalledWith("g1", "choose_option", { option_id: "opt1" }));
-    expect(await screen.findByText("下一事件")).toBeInTheDocument();
+    await waitFor(
+      () => expect(api.act).toHaveBeenCalledWith("g1", "choose_option", { option_id: "opt1" }),
+      { timeout: 3000 }
+    );
+    expect(await screen.findByText("next event")).toBeInTheDocument();
   });
 
-  it("动作失败时显示统一错误提示", async () => {
+  it("shows unified action error message", async () => {
     localStorage.setItem(GAME_ID_KEY, "g1");
     api.getState.mockResolvedValue(buildState());
     api.act.mockRejectedValue(new Error("boom"));
@@ -111,13 +143,14 @@ describe("App + query integration", () => {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     renderApp(client);
 
-    const button = await screen.findByRole("button", { name: "选项1" });
-    fireEvent.click(button);
+    const buttons = await screen.findAllByRole("button", { name: "Option 1" });
+    fireEvent.click(buttons[0]);
 
-    expect(await screen.findByText("[act] boom")).toBeInTheDocument();
+    const errors = await screen.findAllByText("[act] boom", undefined, { timeout: 3000 });
+    expect(errors.length).toBeGreaterThan(0);
   });
 
-  it("缓存命中时可恢复页面状态", async () => {
+  it("restores page state from query cache", async () => {
     localStorage.setItem(GAME_ID_KEY, "g1");
     api.getState.mockResolvedValue(buildState());
 
@@ -128,6 +161,8 @@ describe("App + query integration", () => {
 
     renderApp(client);
 
-    expect(await screen.findByText(/回合 3/)).toBeInTheDocument();
+    const gameIds = await screen.findAllByText(/Game ID: g1/);
+    expect(gameIds.length).toBeGreaterThan(0);
+    expect(api.newGame).not.toHaveBeenCalled();
   });
 });

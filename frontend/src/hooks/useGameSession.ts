@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { act, getState, newGame } from "../api";
-import type { GameState } from "../types";
+import type { CourtStrategy, GameState } from "../types";
 import {
   GAME_ID_KEY,
   HELP_DISABLE_AUTO_KEY,
@@ -10,14 +10,26 @@ import {
   useGameStore,
 } from "../store/gameStore";
 
+const STATE_SCHEMA_VERSION = "court-buffer-v1";
+const STATE_SCHEMA_KEY = "zhuge_state_schema_version";
+
 function formatErrorMessage(scope: string, err: unknown): string {
   const detail = err instanceof Error ? err.message : String(err);
   return `[${scope}] ${detail}`;
 }
 
+const COMMAND_DISPATCH_DELAY_MS = 500;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+}
+
 export function useGameSession() {
   const queryClient = useQueryClient();
   const [prevState, setPrevState] = useState<GameState | null>(null);
+  const [commandDispatching, setCommandDispatching] = useState(false);
 
   const {
     gameId,
@@ -98,6 +110,11 @@ export function useGameSession() {
     async function boot() {
       if (!mounted) return;
       setError("");
+      const storedSchemaVersion = localStorage.getItem(STATE_SCHEMA_KEY);
+      if (storedSchemaVersion !== STATE_SCHEMA_VERSION) {
+        localStorage.setItem(STATE_SCHEMA_KEY, STATE_SCHEMA_VERSION);
+        localStorage.removeItem(GAME_ID_KEY);
+      }
       const savedId = localStorage.getItem(GAME_ID_KEY);
       if (!savedId) {
         await createGameMutation.mutateAsync();
@@ -138,9 +155,13 @@ export function useGameSession() {
   }, []); // Only run once on mount
 
   useEffect(() => {
-    const nextBusy = stateQuery.isFetching || createGameMutation.isPending || actMutation.isPending;
+    const nextBusy =
+      stateQuery.isFetching ||
+      createGameMutation.isPending ||
+      actMutation.isPending ||
+      commandDispatching;
     setBusy(nextBusy);
-  }, [actMutation.isPending, createGameMutation.isPending, setBusy, stateQuery.isFetching]);
+  }, [actMutation.isPending, commandDispatching, createGameMutation.isPending, setBusy, stateQuery.isFetching]);
 
   useEffect(() => {
     if (stateQuery.isError) {
@@ -156,36 +177,128 @@ export function useGameSession() {
   }, [gameId, queryClient, stateQuery.data]);
 
   const canAct = Boolean(state && state.outcome === "ONGOING");
-  const hasDecisionOptions = state ? state.current_event.options.length > 0 : false;
-  const canNextTurn = Boolean(canAct && !hasDecisionOptions);
+  const courtActive = Boolean(state && (state.court.is_active || state.phase === "court"));
+  const hasDecisionOptions = state ? !courtActive && state.current_event.options.length > 0 : false;
+  const canNextTurn = Boolean(canAct && !hasDecisionOptions && !courtActive);
 
   async function onNewGame() {
     setError("");
-    await createGameMutation.mutateAsync();
+    setCommandDispatching(true);
+    try {
+      await sleep(COMMAND_DISPATCH_DELAY_MS);
+      await createGameMutation.mutateAsync();
+    } catch {
+      // Error is already propagated to UI state via mutation onError.
+    } finally {
+      setCommandDispatching(false);
+    }
   }
 
   async function onChoose(optionId: string) {
-    if (!state || !canAct) {
+    if (!state || !canAct || state.court.is_active) {
       return;
     }
     setPrevState(state);
-    await actMutation.mutateAsync({
-      currentGameId: state.game_id,
-      action: "choose_option",
-      payload: { option_id: optionId },
-    });
+    setCommandDispatching(true);
+    try {
+      await sleep(COMMAND_DISPATCH_DELAY_MS);
+      await actMutation.mutateAsync({
+        currentGameId: state.game_id,
+        action: "choose_option",
+        payload: { option_id: optionId },
+      });
+    } catch {
+      // Error is already propagated to UI state via mutation onError.
+    } finally {
+      setCommandDispatching(false);
+    }
   }
 
   async function onNextTurn() {
-    if (!state || !canNextTurn) {
+    if (!state || !canNextTurn || state.court.is_active) {
       return;
     }
     setPrevState(state);
-    await actMutation.mutateAsync({
-      currentGameId: state.game_id,
-      action: "next_turn",
-      payload: {},
-    });
+    setCommandDispatching(true);
+    try {
+      await sleep(COMMAND_DISPATCH_DELAY_MS);
+      await actMutation.mutateAsync({
+        currentGameId: state.game_id,
+        action: "next_turn",
+        payload: {},
+      });
+    } catch {
+      // Error is already propagated to UI state via mutation onError.
+    } finally {
+      setCommandDispatching(false);
+    }
+  }
+
+  async function onCourtStrategy(strategy: CourtStrategy) {
+    if (!state || state.phase !== "court" || !canAct) {
+      return;
+    }
+    setPrevState(state);
+    setCommandDispatching(true);
+    try {
+      await sleep(COMMAND_DISPATCH_DELAY_MS);
+      await actMutation.mutateAsync({
+        currentGameId: state.game_id,
+        action: "court_strategy",
+        payload: { strategy },
+      });
+    } catch {
+      // Error is already propagated to UI state via mutation onError.
+    } finally {
+      setCommandDispatching(false);
+    }
+  }
+
+  async function onCourtStatement(statement: string, strategyHint?: CourtStrategy) {
+    if (!state || state.phase !== "court" || !canAct) {
+      return;
+    }
+    const trimmed = statement.trim();
+    if (!trimmed) {
+      return;
+    }
+    setPrevState(state);
+    setCommandDispatching(true);
+    try {
+      await sleep(COMMAND_DISPATCH_DELAY_MS);
+      await actMutation.mutateAsync({
+        currentGameId: state.game_id,
+        action: "court_statement",
+        payload: {
+          statement: trimmed,
+          strategy_hint: strategyHint,
+        },
+      });
+    } catch {
+      // Error is already propagated to UI state via mutation onError.
+    } finally {
+      setCommandDispatching(false);
+    }
+  }
+
+  async function onCourtFastForward() {
+    if (!state || state.phase !== "court" || !canAct) {
+      return;
+    }
+    setPrevState(state);
+    setCommandDispatching(true);
+    try {
+      await sleep(260);
+      await actMutation.mutateAsync({
+        currentGameId: state.game_id,
+        action: "court_fast_forward",
+        payload: {},
+      });
+    } catch {
+      // Error is already propagated to UI state via mutation onError.
+    } finally {
+      setCommandDispatching(false);
+    }
   }
 
   function updateHelpAutoPreference(disable: boolean) {
@@ -204,10 +317,15 @@ export function useGameSession() {
     canAct,
     hasDecisionOptions,
     canNextTurn,
+    commandDispatching,
+    courtActive,
     setHelpOpen,
     updateHelpAutoPreference,
     onNewGame,
     onChoose,
     onNextTurn,
+    onCourtStrategy,
+    onCourtStatement,
+    onCourtFastForward,
   };
 }

@@ -9,6 +9,9 @@ import MapPanel from "./components/MapPanel";
 import GoalPanel from "./components/GoalPanel";
 import HelpDrawer from "./components/HelpDrawer";
 import ObjectiveStrip from "./components/ObjectiveStrip";
+import AssistantPanel from "./components/AssistantPanel";
+import CourtBufferPanel from "./components/CourtBufferPanel";
+import CourtResultPanel from "./components/CourtResultPanel";
 import { useGameSession } from "./hooks/useGameSession";
 import { diffState } from "./utils/diff";
 import { playMechanicalPress } from "./utils/sound";
@@ -25,16 +28,21 @@ export default function App() {
     canAct,
     hasDecisionOptions,
     canNextTurn,
+    commandDispatching,
+    courtActive,
     setHelpOpen,
     updateHelpAutoPreference,
     onNewGame,
     onChoose,
     onNextTurn,
+    onCourtStrategy,
+    onCourtStatement,
+    onCourtFastForward,
   } = useGameSession();
 
   const summary = useMemo(() => (state ? diffState(prevState, state) : null), [prevState, state]);
 
-  if (!state) {
+  if (!state || !summary) {
     return <main className="app-shell">加载中...</main>;
   }
 
@@ -47,17 +55,37 @@ export default function App() {
       <MapPanel state={state} audioEnabled={audioEnabled} />
 
       <section className="main-grid">
-        <EventPanel
-          text={state.current_event.text}
-          options={state.current_event.options}
-          busy={busy}
-          can_next_turn={canNextTurn}
-          turn={state.turn}
-          onChoose={onChoose}
-          onNextTurn={onNextTurn}
-        />
-        {summary ? <LogPanel log={state.log} prevLog={prevState?.log ?? []} summary={summary} state={state} prevState={prevState} /> : null}
+        <div className="main-column">
+          {courtActive ? (
+            <div className="court-modal-backdrop">
+              <div className="court-modal">
+                <CourtBufferPanel
+                  court={state.court}
+                  busy={busy}
+                  dispatching={commandDispatching}
+                  onSubmitStatement={(statement, strategyHint) => void onCourtStatement(statement, strategyHint)}
+                  onQuickStrategy={(strategy) => void onCourtStrategy(strategy)}
+                  onFastForward={() => void onCourtFastForward()}
+                />
+              </div>
+            </div>
+          ) : (
+            <EventPanel
+              text={state.current_event.text}
+              options={state.current_event.options}
+              busy={busy}
+              dispatching={commandDispatching}
+              can_next_turn={canNextTurn}
+              turn={state.turn}
+              onChoose={onChoose}
+              onNextTurn={onNextTurn}
+            />
+          )}
+          {!courtActive ? <CourtResultPanel court={state.court} /> : null}
+        </div>
+        <LogPanel log={state.log} prevLog={prevState?.log ?? []} summary={summary} state={state} prevState={prevState} />
       </section>
+      <AssistantPanel state={state} prevState={prevState} summary={summary} />
 
       <section className="panel controls">
         <button disabled={busy} onClick={() => { playMechanicalPress(); void onNewGame(); }}>新游戏</button>

@@ -40,6 +40,9 @@ def probability_for_check(check_key: str, state: GameState) -> float:
     if state.flags.get("post_zhuge_era", False):
         base *= balance.POST_ZHUGE_SUCCESS_MULTIPLIER
 
+    if state.court.active_modifier is not None:
+        base += state.court.active_modifier.check_modifier
+
     return _clamp(base)
 
 

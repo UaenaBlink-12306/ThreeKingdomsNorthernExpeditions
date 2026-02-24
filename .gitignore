@@ -16,3 +16,12 @@ npm-debug.log*
 Thumbs.db
 .vscode/
 .idea/
+
+# Environment
+.env
+backend/.env
+frontend/.env.local
+
+# Local runtime logs
+*-dev.log
+*-dev.err.log

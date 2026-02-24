@@ -4,6 +4,7 @@ import random
 from dataclasses import dataclass
 
 from app.engine import balance
+from app.engine.conditions import evaluate_condition
 from app.engine.runtime import GameEngine
 from app.models.event_graph import NodeType
 from app.models.state import Outcome
@@ -40,9 +41,20 @@ def simulate(n: int = 2000, seed: int = 42) -> SimulationSummary:
 
         steps = 0
         while state.outcome == Outcome.ONGOING and steps < balance.MAX_TURNS_PER_RUN:
+            if state.court.is_active:
+                strategy = _pick_court_strategy(state, policy_rng)
+                statement = _statement_for_strategy(strategy)
+                state = engine.act(
+                    state.game_id,
+                    "court_statement",
+                    {"statement": statement, "strategy_hint": strategy},
+                )
+                steps += 1
+                continue
+
             node = engine.graph.get(state.current_node_id)
             if node.node_type == NodeType.CHOICE:
-                enabled = [opt for opt in state.current_event.options if not opt.disabled]
+                enabled = [opt for opt in node.options if evaluate_condition(opt.condition, state)]
                 if enabled and policy_rng.random() < 0.95:
                     chosen = _weighted_choice(enabled, policy_rng)
                     state = engine.act(state.game_id, "choose_option", {"option_id": chosen.id})
@@ -54,7 +66,16 @@ def simulate(n: int = 2000, seed: int = 42) -> SimulationSummary:
 
         if state.outcome == Outcome.ONGOING:
             for _ in range(balance.MAX_TURNS_PER_RUN):
-                state = engine.act(state.game_id, "next_turn", {})
+                if state.court.is_active:
+                    strategy = _pick_court_strategy(state, policy_rng)
+                    statement = _statement_for_strategy(strategy)
+                    state = engine.act(
+                        state.game_id,
+                        "court_statement",
+                        {"statement": statement, "strategy_hint": strategy},
+                    )
+                else:
+                    state = engine.act(state.game_id, "next_turn", {})
                 if state.outcome != Outcome.ONGOING:
                     break
 
@@ -110,3 +131,24 @@ def _weighted_choice(options, rng: random.Random):
         if ticket <= cursor:
             return opt
     return weighted[-1][1]
+
+
+def _pick_court_strategy(state, rng: random.Random) -> str:  # noqa: ANN001
+    tags = set(state.court.current_issue_tags)
+    if state.court.support < 40 and ("morale" in tags or "momentum" in tags):
+        return "emotional_mobilization"
+    if "supply" in tags or "risk" in tags or "stability" in tags:
+        return "rational_argument"
+    if state.court.time_pressure <= 1 and state.court.support < 60:
+        return "authority_pressure"
+    if state.court.temperature < 20 and rng.random() < 0.4:
+        return "emotional_mobilization"
+    return "rational_argument"
+
+
+def _statement_for_strategy(strategy: str) -> str:
+    if strategy == "authority_pressure":
+        return "请陛下立军令，先统一指挥链与问责。"
+    if strategy == "emotional_mobilization":
+        return "将士士气可用，请以民心与军心支持前线再进。"
+    return "我给出粮草与里程证据，按可行性推进北伐。"

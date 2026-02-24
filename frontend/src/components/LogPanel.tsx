@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import TurnSummary from "./TurnSummary";
 import type { DiffSummary } from "../utils/diff";
@@ -18,6 +18,8 @@ interface LogPanelProps {
 export default function LogPanel({ log, prevLog, summary, state, prevState }: LogPanelProps) {
   const [showRaw, setShowRaw] = useState(false);
   const [tab, setTab] = useState<"delta" | "history">("delta");
+  const [revealedDetailCount, setRevealedDetailCount] = useState(0);
+  const DETAIL_LINE_DELAY_MS = 400;
 
   const deltaLog = useMemo(() => computeLogDelta(prevLog, log), [prevLog, log]);
 
@@ -45,6 +47,27 @@ export default function LogPanel({ log, prevLog, summary, state, prevState }: Lo
     () => compressLog(tab === "delta" ? prioritizedDelta : playerFacingHistory).slice(-25).reverse(),
     [tab, prioritizedDelta, playerFacingHistory]
   );
+  const visibleDetailList = detailList.slice(0, revealedDetailCount);
+
+  useEffect(() => {
+    if (detailList.length < 1) {
+      setRevealedDetailCount(0);
+      return;
+    }
+    setRevealedDetailCount(0);
+    const interval = window.setInterval(() => {
+      setRevealedDetailCount((current) => {
+        if (current >= detailList.length) {
+          window.clearInterval(interval);
+          return current;
+        }
+        return current + 1;
+      });
+    }, DETAIL_LINE_DELAY_MS);
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, [detailList]);
 
   return (
     <aside className="panel log-panel">
@@ -64,7 +87,7 @@ export default function LogPanel({ log, prevLog, summary, state, prevState }: Lo
 
       <ul>
         <AnimatePresence initial={false}>
-          {detailList.map((entry, index) => (
+          {visibleDetailList.map((entry, index) => (
             <motion.li
               key={`${entry.text}-${index}`}
               initial={{ opacity: 0, x: -10 }}
@@ -78,6 +101,7 @@ export default function LogPanel({ log, prevLog, summary, state, prevState }: Lo
           ))}
         </AnimatePresence>
       </ul>
+      {revealedDetailCount < detailList.length ? <p className="report-streaming">战报传输中...</p> : null}
     </aside>
   );
 }
