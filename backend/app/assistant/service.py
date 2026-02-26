@@ -116,6 +116,7 @@ class GameAssistantService:
                 "只能基于提供的状态与选项分析，禁止虚构隐藏规则、额外事件或后台概率。"
                 "请使用简洁中文 Markdown，包含三个小节："
                 "1）取舍分析 2）推荐行动 3）风险提醒。"
+                "必须给出至少一条反对视角（如补给派/保守派顾虑）。"
             )
 
         if mode == ChatMode.AFTERTURN_INTERPRETER:
@@ -137,6 +138,7 @@ class GameAssistantService:
             "你将扮演三国时代谋臣，与玩家进行角色化对话。"
             "保持角色语气，但建议必须基于当前游戏状态。"
             "禁止声称你改变了游戏机制或结果。"
+            "回答中需体现支持与反对两方的核心理由，不要只给单边赞成。"
         )
 
     def _user_prompt(

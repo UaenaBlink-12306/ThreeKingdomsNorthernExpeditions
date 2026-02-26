@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { reportConsoleError } from "../utils/errorLogger";
 
 type QueryKey = readonly unknown[];
 
@@ -130,6 +131,9 @@ export function useQuery<T>(options: QueryOptions<T>) {
       })
       .catch((err) => {
         if (!active) return;
+        reportConsoleError("react_query.useQuery_failed", err, {
+          queryKey: optionsRef.current.queryKey,
+        });
         setError(err);
       })
       .finally(() => {
@@ -162,6 +166,7 @@ export function useMutation<TData, TVariables = void>(options: MutationOptions<T
       options.onSuccess?.(data, variables);
       return data;
     } catch (err) {
+      reportConsoleError("react_query.useMutation_failed", err);
       options.onError?.(err);
       throw err;
     } finally {
@@ -178,6 +183,10 @@ async function executeWithRetry<T>(fn: () => Promise<T>, retry: number, retryDel
     try {
       return await fn();
     } catch (err) {
+      reportConsoleError("react_query.retry_attempt_failed", err, {
+        attempt: count + 1,
+        maxAttempts: retry + 1,
+      });
       if (count >= retry) {
         throw err;
       }

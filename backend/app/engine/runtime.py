@@ -251,8 +251,7 @@ class GameEngine:
         strategy = self._parse_strategy(strategy_raw)
         settled = resolve_court_strategy(state, strategy, session.rng)
         if settled and not state.court.is_active:
-            self._restore_phase_after_court(state)
-            self._advance_battle_turn(session)
+            self._finalize_court_resolution(session)
 
     def _court_statement(self, session, statement: str, strategy_hint: str | None) -> None:
         state = session.state
@@ -262,8 +261,7 @@ class GameEngine:
         strategy = self._strategy_from_statement(statement, strategy_hint)
         settled = resolve_court_strategy(state, strategy, session.rng, statement=statement)
         if settled and not state.court.is_active:
-            self._restore_phase_after_court(state)
-            self._advance_battle_turn(session)
+            self._finalize_court_resolution(session)
 
     def _court_fast_forward(self, session) -> None:
         state = session.state
@@ -273,8 +271,7 @@ class GameEngine:
         if state.court.is_active:
             settle_court_session(state, force_timeout=True)
         if not state.court.is_active:
-            self._restore_phase_after_court(state)
-            self._advance_battle_turn(session)
+            self._finalize_court_resolution(session)
 
     def _parse_strategy(self, strategy_raw: str) -> CourtStrategy:
         normalized = strategy_raw.strip().lower()
@@ -371,6 +368,37 @@ class GameEngine:
         except ValueError:
             state.phase = Phase.CAMPAIGN
 
+    def _finalize_court_resolution(self, session) -> None:
+        state = session.state
+        self._restore_phase_after_court(state)
+        self._advance_battle_turn(session)
+        self._resolve_legacy_court_route(session)
+
+    def _resolve_legacy_court_route(self, session) -> bool:
+        state = session.state
+        changed = False
+
+        if state.current_node_id == "court_hub":
+            self._transition(session, "court_router", autostart_court=False)
+            state = session.state
+            changed = True
+
+        if state.current_node_id != "court_router":
+            return changed
+
+        node = self.graph.get("court_router")
+        if node.node_type != NodeType.CHOICE:
+            return changed
+
+        for option in node.options:
+            if not evaluate_condition(option.condition, state):
+                continue
+            apply_effects(state, option.effects)
+            self._transition(session, option.next)
+            return True
+
+        return changed
+
     def _advance_battle_turn(self, session) -> None:
         state = session.state
         state.turn += 1
@@ -434,7 +462,7 @@ class GameEngine:
         apply_effects(state, option.effects)
         self._transition(session, option.next)
 
-    def _transition(self, session, next_node_id: str) -> None:
+    def _transition(self, session, next_node_id: str, *, autostart_court: bool = True) -> None:
         self._trace(
             session,
             level="info",
@@ -444,12 +472,13 @@ class GameEngine:
             node_id=next_node_id,
         )
         self._set_node(session.state, next_node_id)
-        self._maybe_start_court_on_phase_entry(session)
+        if autostart_court:
+            self._maybe_start_court_on_phase_entry(session)
         self._resolve_checks(session)
 
     def _maybe_start_court_on_phase_entry(self, session) -> None:
         state = session.state
-        if state.phase == Phase.COURT and not state.court.is_active:
+        if state.phase == Phase.COURT and not state.court.is_active and state.current_node_id == "court_hub":
             begin_court_session(state, session.rng)
 
     def _add_fx_token(self, state: GameState, token: str) -> None:
@@ -612,7 +641,12 @@ class GameEngine:
         state = session.state
         if state.outcome != Outcome.ONGOING:
             return False
+
+        if state.phase == Phase.COURT and not state.court.is_active and state.court.last_resolution is not None:
+            return self._resolve_legacy_court_route(session)
+
         if state.phase == Phase.COURT and not state.court.is_active:
-            begin_court_session(state, session.rng)
-            return True
+            if state.current_node_id == "court_hub":
+                begin_court_session(state, session.rng)
+                return True
         return False

@@ -12,6 +12,8 @@ interface CourtBufferPanelProps {
   onFastForward: () => void;
 }
 
+type CourtGoalId = "supply_request" | "cool_opposition" | "secure_edict";
+
 const STRATEGY_META: Array<{
   id: CourtStrategy;
   label: string;
@@ -21,6 +23,36 @@ const STRATEGY_META: Array<{
   { id: "rational_argument", label: "理性论证", desc: "强调证据、粮草与可行性", cost: "消耗：粮草 -1" },
   { id: "authority_pressure", label: "权威压制", desc: "快速定令，压低争执", cost: "消耗：政治 -4 / 士气 -1" },
   { id: "emotional_mobilization", label: "情感动员", desc: "强调军心民心与战机", cost: "消耗：士气 -2 / 粮草 -1" },
+];
+
+const COURT_GOALS: Array<{
+  id: CourtGoalId;
+  title: string;
+  desc: string;
+  doneText: string;
+  recommendStrategy: CourtStrategy;
+}> = [
+  {
+    id: "supply_request",
+    title: "目标A：申请粮草",
+    desc: "把支持度推到 60+，先拿到补给授权。",
+    doneText: "已拿到补给授权",
+    recommendStrategy: "rational_argument",
+  },
+  {
+    id: "cool_opposition",
+    title: "目标B：压住反对声浪",
+    desc: "把温度降到 20 以下，同时让最高反感不超过 7。",
+    doneText: "反对声浪暂时受控",
+    recommendStrategy: "authority_pressure",
+  },
+  {
+    id: "secure_edict",
+    title: "目标C：争取北伐军令",
+    desc: "把支持度推到 72+，直接进入拍板线。",
+    doneText: "北伐军令达标",
+    recommendStrategy: "emotional_mobilization",
+  },
 ];
 
 function campLabel(camp: string): string {
@@ -39,7 +71,7 @@ function campLabel(camp: string): string {
 }
 
 function messageDelay(text: string): number {
-  return Math.max(250, Math.min(900, 220 + text.length * 16));
+  return Math.max(450, Math.min(1600, 420 + text.length * 24));
 }
 
 export default function CourtBufferPanel({
@@ -52,8 +84,10 @@ export default function CourtBufferPanel({
 }: CourtBufferPanelProps) {
   const [statement, setStatement] = useState("");
   const [strategyHint, setStrategyHint] = useState<CourtStrategy>("rational_argument");
+  const [selectedGoal, setSelectedGoal] = useState<CourtGoalId>("supply_request");
   const [visibleIds, setVisibleIds] = useState<string[]>([]);
   const [skipQueue, setSkipQueue] = useState(false);
+  const chatContainerRef = useRef<HTMLDivElement | null>(null);
   const timerRef = useRef<number | null>(null);
   const lastSessionRef = useRef<number>(court.session_id);
 
@@ -71,6 +105,8 @@ export default function CourtBufferPanel({
     setVisibleIds([]);
     setSkipQueue(false);
     setStatement("");
+    setSelectedGoal("supply_request");
+    setStrategyHint("rational_argument");
     if (timerRef.current !== null) {
       window.clearTimeout(timerRef.current);
       timerRef.current = null;
@@ -110,6 +146,19 @@ export default function CourtBufferPanel({
     }
   }, [court.is_active]);
 
+  useEffect(() => {
+    const container = chatContainerRef.current;
+    if (!container) {
+      return;
+    }
+    const rafId = window.requestAnimationFrame(() => {
+      container.scrollTop = container.scrollHeight;
+    });
+    return () => {
+      window.cancelAnimationFrame(rafId);
+    };
+  }, [court.session_id, court.pending_messages.length, visibleMessages.length]);
+
   const temperaturePercent = ((court.temperature + 100) / 200) * 100;
   const supportPercent = Math.max(0, Math.min(100, court.support));
   const timePercent =
@@ -120,6 +169,30 @@ export default function CourtBufferPanel({
   const resentmentList = Object.values(court.npcs)
     .sort((a, b) => b.resentment - a.resentment)
     .slice(0, 7);
+  const maxResentment = resentmentList[0]?.resentment ?? 0;
+
+  function clampPercent(value: number): number {
+    return Math.max(0, Math.min(100, Math.round(value)));
+  }
+
+  const goalProgress = useMemo(() => {
+    const supplyProgress = clampPercent(((court.support - 40) / 20) * 100);
+    const supplyDone = court.support >= 60;
+
+    const coolTempProgress = court.temperature <= 20 ? 100 : clampPercent(100 - ((court.temperature - 20) / 80) * 100);
+    const coolResentProgress = maxResentment <= 7 ? 100 : clampPercent(100 - ((maxResentment - 7) / 13) * 100);
+    const coolProgress = clampPercent((coolTempProgress + coolResentProgress) / 2);
+    const coolDone = court.temperature <= 20 && maxResentment <= 7;
+
+    const edictProgress = clampPercent((court.support / 72) * 100);
+    const edictDone = court.support >= 72;
+
+    return {
+      supply_request: { progress: supplyProgress, done: supplyDone },
+      cool_opposition: { progress: coolProgress, done: coolDone },
+      secure_edict: { progress: edictProgress, done: edictDone },
+    };
+  }, [court.support, court.temperature, maxResentment]);
 
   function submitStatement(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -144,12 +217,41 @@ export default function CourtBufferPanel({
     onFastForward();
   }
 
+  function chooseGoal(goalId: CourtGoalId) {
+    const goal = COURT_GOALS.find((item) => item.id === goalId);
+    setSelectedGoal(goalId);
+    if (goal) {
+      setStrategyHint(goal.recommendStrategy);
+    }
+    playMechanicalClick();
+  }
+
   return (
     <section className="panel court-panel">
       <header className="court-header">
         <h2>朝堂缓冲区</h2>
         <small>你是诸葛亮。请用陈词稳住朝议支持。</small>
       </header>
+
+      <section className="court-goals">
+        <h3>诸葛亮本轮可选目标（建议主攻一项）</h3>
+        <ul>
+          {COURT_GOALS.map((goal) => {
+            const status = goalProgress[goal.id];
+            return (
+              <li key={goal.id} className={selectedGoal === goal.id ? "active" : ""}>
+                <button type="button" onClick={() => chooseGoal(goal.id)} disabled={busy}>
+                  <strong>{goal.title}</strong>
+                  <span>{goal.desc}</span>
+                  <small>
+                    {status.done ? `已达成：${goal.doneText}` : `进度 ${status.progress}%`}
+                  </small>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      </section>
 
       <div className="court-meters">
         <div className="court-meter">
@@ -187,7 +289,7 @@ export default function CourtBufferPanel({
       </div>
 
       <div className="court-layout">
-        <div className="court-chat">
+        <div className="court-chat" ref={chatContainerRef}>
           {visibleMessages.length < 1 ? <p className="report-streaming">战报传来……</p> : null}
           <ul>
             {visibleMessages.map((message: CourtMessage) => (

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import random
 
+from app.assistant.court_dialogue import CourtDialogueService
 from app.engine.effects import add_log, apply_effects
 from app.models.court import (
     CourtBattleModifier,
@@ -15,15 +16,17 @@ from app.models.court import (
 from app.models.state import GameState, Outcome, Phase
 
 COURT_TRIGGER_INTERVAL = 3
+COURT_REENTRY_COOLDOWN_TURNS = 2
 SUPPORT_PASS_THRESHOLD = 72
 SUPPORT_FAIL_THRESHOLD = 18
 RESENTMENT_THRESHOLD = 9
 MAX_COURT_HISTORY = 8
+COURT_RETURN_LOCATION = "chengdu"
 
 STRATEGY_PROFILE: dict[CourtStrategy, dict[str, object]] = {
     CourtStrategy.RATIONAL: {
         "label": "理性论证",
-        "support_bias": 1.5,
+        "support_bias": 0.55,
         "temperature_push": -5,
         "resource_stat": "politics",
         "resource_weight": 0.08,
@@ -32,7 +35,7 @@ STRATEGY_PROFILE: dict[CourtStrategy, dict[str, object]] = {
     },
     CourtStrategy.AUTHORITY: {
         "label": "权威压制",
-        "support_bias": 0.2,
+        "support_bias": -0.25,
         "temperature_push": -9,
         "resource_stat": "politics",
         "resource_weight": 0.12,
@@ -41,7 +44,7 @@ STRATEGY_PROFILE: dict[CourtStrategy, dict[str, object]] = {
     },
     CourtStrategy.EMOTIONAL: {
         "label": "情感动员",
-        "support_bias": 1.0,
+        "support_bias": 0.2,
         "temperature_push": 11,
         "resource_stat": "morale",
         "resource_weight": 0.1,
@@ -69,6 +72,8 @@ ISSUE_LABELS = {
     "conflict": "主战与保守派冲突升级",
 }
 
+_court_dialogue = CourtDialogueService()
+
 
 def _clamp(value: float, low: int, high: int) -> int:
     return int(max(low, min(high, round(value))))
@@ -91,6 +96,35 @@ def _append_message(court: CourtState, *, speaker_id: str, speaker_name: str, ca
     )
 
 
+def _append_npc_message(
+    state: GameState,
+    *,
+    npc_id: str,
+    fallback_text: str,
+    strategy: CourtStrategy | None = None,
+    scene: str = "debate",
+) -> None:
+    court = state.court
+    npc = court.npcs.get(npc_id)
+    if npc is None:
+        return
+
+    text = _court_dialogue.generate_line(
+        state=state,
+        npc=npc,
+        fallback_text=fallback_text,
+        strategy=strategy,
+        scene=scene,
+    )
+    _append_message(
+        court,
+        speaker_id=npc.id,
+        speaker_name=npc.display_name,
+        camp=npc.camp,
+        text=text,
+    )
+
+
 def should_trigger_court(state: GameState) -> bool:
     if state.court.is_active or state.outcome != Outcome.ONGOING:
         return False
@@ -100,6 +134,9 @@ def should_trigger_court(state: GameState) -> bool:
         return False
 
     turns_since = state.turn - state.court.last_trigger_turn
+    if turns_since < COURT_REENTRY_COOLDOWN_TURNS:
+        return False
+
     cadence_due = turns_since >= COURT_TRIGGER_INTERVAL
     critical = (
         state.food <= 62
@@ -142,6 +179,11 @@ def begin_court_session(state: GameState, rng: random.Random) -> None:
     court.max_time_pressure = 3 if (state.food < 65 or state.court.momentum <= -2) else 4
     court.time_pressure = court.max_time_pressure
 
+    # 朝议阶段统一回到成都，地图与路线立刻切回中枢。
+    state.current_location = COURT_RETURN_LOCATION
+    state.active_route_id = None
+    state.route_progress = 0.0
+
     _append_message(
         court,
         speaker_id="system",
@@ -149,57 +191,51 @@ def begin_court_session(state: GameState, rng: random.Random) -> None:
         camp="system",
         text="战报传来……成都朝堂紧急议事。",
     )
-    _append_message(
-        court,
-        speaker_id="jiang_wan",
-        speaker_name="蒋琬",
-        camp="administration",
-        text="先报粮数与行军里程，空谈无益。",
+    _append_npc_message(
+        state,
+        npc_id="jiang_wan",
+        fallback_text="先报粮数与行军里程，空谈无益。",
+        scene="opening",
     )
-    _append_message(
-        court,
-        speaker_id="yang_yi",
-        speaker_name="杨仪",
-        camp="bureaucrat",
-        text="前线若再失误，谁来担责？",
+    _append_npc_message(
+        state,
+        npc_id="yang_yi",
+        fallback_text="前线若再失误，谁来担责？",
+        scene="opening",
     )
-    _append_message(
-        court,
-        speaker_id="wei_yan",
-        speaker_name="魏延",
-        camp="vanguard",
-        text="畏首畏尾只会错失战机！",
+    _append_npc_message(
+        state,
+        npc_id="wei_yan",
+        fallback_text="畏首畏尾只会错失战机！",
+        scene="opening",
     )
-    _append_message(
-        court,
-        speaker_id="yang_yi",
-        speaker_name="杨仪",
-        camp="bureaucrat",
-        text="魏延又是赌命奇谋，后患谁收？",
+    _append_npc_message(
+        state,
+        npc_id="yang_yi",
+        fallback_text="魏延又是赌命奇谋，后患谁收？",
+        scene="opening",
     )
-    _append_message(
-        court,
-        speaker_id="fei_yi",
-        speaker_name="费祎",
-        camp="moderate",
-        text="诸位先定共识，再争攻守。",
+    _append_npc_message(
+        state,
+        npc_id="fei_yi",
+        fallback_text="诸位先定共识，再争攻守。",
+        scene="opening",
     )
-    _append_message(
-        court,
-        speaker_id="dong_yun",
-        speaker_name="董允",
-        camp="institution",
-        text="军令可行，但制度不能失守。",
+    _append_npc_message(
+        state,
+        npc_id="dong_yun",
+        fallback_text="军令可行，但制度不能失守。",
+        scene="opening",
     )
-    _append_message(
-        court,
-        speaker_id="liu_shan",
-        speaker_name="刘禅",
-        camp="imperial",
-        text="相父，请以三策安众心。",
+    _append_npc_message(
+        state,
+        npc_id="liu_shan",
+        fallback_text="相父，请以三策安众心。",
+        scene="opening",
     )
 
-    add_log(state, "战报传来：朝堂缓冲区开启，需先稳住朝议。")
+    add_log(state, "战报传来：即将进入朝堂缓冲区。")
+    add_log(state, "地图切回成都：朝堂缓冲区开启，需先稳住朝议。")
 
 
 def resolve_court_strategy(
@@ -332,12 +368,11 @@ def settle_court_session(state: GameState, force_timeout: bool = False) -> None:
         npc.ignored_rounds = 0
         npc.resentment = max(0, npc.resentment - 1)
 
-    _append_message(
-        court,
-        speaker_id="liu_shan",
-        speaker_name="刘禅",
-        camp="imperial",
-        text=_liu_shan_settlement_line(result),
+    _append_npc_message(
+        state,
+        npc_id="liu_shan",
+        fallback_text=_liu_shan_settlement_line(result),
+        scene="settlement",
     )
     _append_message(
         court,
@@ -466,7 +501,7 @@ def _pick_issue_tags(state: GameState) -> list[str]:
 
 def _statement_quality_bonus(statement: str, strategy: CourtStrategy, issue_tags: list[str]) -> int:
     text = statement.lower()
-    length_score = 1 if len(text.strip()) >= 18 else 0
+    length_score = 1 if len(text.strip()) >= 18 else -1
 
     strategy_keywords: dict[CourtStrategy, list[str]] = {
         CourtStrategy.RATIONAL: [
@@ -516,7 +551,16 @@ def _statement_quality_bonus(statement: str, strategy: CourtStrategy, issue_tags
             issue_hit += 1
 
     total = length_score + min(2, hit_count) + min(2, issue_hit)
-    return min(4, total)
+
+    # 无关键词时默认视为“空话”，不再总是正收益。
+    if hit_count < 1:
+        total -= 1
+
+    aggressive_tokens = ["\u7acb\u523b", "\u4e0d\u5f97\u8d28\u7591", "\u8fdd\u4ee4", "\u8ffd\u8d23", "\u538b\u4f4f", "must obey"]
+    if strategy == CourtStrategy.AUTHORITY and any(token in text for token in aggressive_tokens):
+        total -= 1
+
+    return int(max(-3, min(4, total)))
 
 
 def _apply_strategy_resource_costs(state: GameState, strategy: CourtStrategy) -> None:
@@ -557,6 +601,22 @@ def _issue_bonus_for_strategy(strategy: CourtStrategy, issue_tags: list[str]) ->
     return min(2.6, total)
 
 
+def _court_stress_penalty(state: GameState, strategy: CourtStrategy) -> float:
+    penalty = 0.0
+    tags = set(state.court.current_issue_tags)
+    if state.food <= 62:
+        penalty += 0.30
+    if state.morale <= 45:
+        penalty += 0.18
+    if state.doom >= 8:
+        penalty += 0.24
+    if strategy == CourtStrategy.EMOTIONAL and ("supply" in tags or "risk" in tags):
+        penalty += 0.22
+    if strategy == CourtStrategy.AUTHORITY and state.court.temperature <= -15:
+        penalty += 0.15
+    return penalty
+
+
 def _evaluate_npc_scores(
     state: GameState,
     strategy: CourtStrategy,
@@ -567,22 +627,25 @@ def _evaluate_npc_scores(
     base_bias = float(profile["support_bias"])
     resource_mod = _resource_modifier_for_strategy(state, strategy)
     issue_mod = _issue_bonus_for_strategy(strategy, court.current_issue_tags)
-    momentum_mod = state.court.momentum * (0.09 if strategy == CourtStrategy.EMOTIONAL else 0.04)
+    momentum_mod = state.court.momentum * (0.08 if strategy == CourtStrategy.EMOTIONAL else 0.035)
+    stress_penalty = _court_stress_penalty(state, strategy)
 
     scores: dict[str, float] = {}
     for npc in court.npcs.values():
         preference = float(npc.resistance_by_strategy.get(strategy, 0.0))
         temp_fit = 1.0 - abs(court.temperature - npc.stance) / 140.0
+        temp_alignment = (temp_fit - 0.45) * 1.8
         resentment_penalty = npc.resentment * 0.12
         random_noise = rng.uniform(-0.65, 0.65)
         score = (
             base_bias
             + preference * 2.4
             + resource_mod
-            + issue_mod * 0.55
-            + temp_fit
+            + issue_mod * 0.38
+            + temp_alignment
             + momentum_mod
             - resentment_penalty
+            - stress_penalty
             + random_noise
         )
         scores[npc.id] = score
@@ -607,7 +670,12 @@ def _aggregate_strategy_effect(
         stance_signal += direction * npc.stance * npc.influence
         total_influence += npc.influence
 
-    support_shift = _clamp(weighted_sum / max(1.0, total_influence * 0.9), -18, 18)
+    support_raw = weighted_sum / max(1.0, total_influence * 0.9)
+    # 支持度越高，继续上升越难；支持度低时更易下滑。
+    support_raw -= max(0.0, (court.support - 60) / 22.0)
+    if court.support <= 36 and support_raw < 0:
+        support_raw *= 1.15
+    support_shift = _clamp(support_raw, -18, 18)
     temp_push = float(STRATEGY_PROFILE[strategy]["temperature_push"])
     temp_shift = _clamp(temp_push + stance_signal / 160.0 + rng.uniform(-2.0, 2.0), -20, 20)
     return support_shift, temp_shift
@@ -686,52 +754,96 @@ def _trigger_resentment_event_if_needed(state: GameState) -> list[str]:
 def _append_reaction_lines(state: GameState, strategy: CourtStrategy, scores: dict[str, float]) -> None:
     court = state.court
     ordered = sorted(scores.items(), key=lambda item: item[1], reverse=True)
-    supports = [npc_id for npc_id, score in ordered if score >= 0.5][:2]
-    opposes = [npc_id for npc_id, score in reversed(ordered) if score < 0][:2]
+    supports = [npc_id for npc_id, score in ordered if score >= 0.6][:2]
+    opposes = [npc_id for npc_id, score in reversed(ordered) if score < 0.3][:2]
+    if len(opposes) < 1:
+        for npc_id, _score in reversed(ordered):
+            if npc_id not in supports:
+                opposes.append(npc_id)
+                break
+    if len(opposes) < 2:
+        for npc_id, _score in reversed(ordered):
+            if npc_id in supports or npc_id in opposes:
+                continue
+            opposes.append(npc_id)
+            if len(opposes) >= 2:
+                break
+
+    forced_opposition = _pick_forced_opposition_voice(court, scores, supports, opposes)
+    if forced_opposition is not None:
+        opposes.append(forced_opposition)
 
     for npc_id in opposes:
-        npc = court.npcs[npc_id]
-        _append_message(
-            court,
-            speaker_id=npc.id,
-            speaker_name=npc.display_name,
-            camp=npc.camp,
-            text=_negative_line(npc.id, strategy),
+        _append_npc_message(
+            state,
+            npc_id=npc_id,
+            fallback_text=_negative_line(npc_id, strategy),
+            strategy=strategy,
+            scene="reaction_negative",
         )
     for npc_id in supports:
-        npc = court.npcs[npc_id]
-        _append_message(
-            court,
-            speaker_id=npc.id,
-            speaker_name=npc.display_name,
-            camp=npc.camp,
-            text=_positive_line(npc.id, strategy),
+        _append_npc_message(
+            state,
+            npc_id=npc_id,
+            fallback_text=_positive_line(npc_id, strategy),
+            strategy=strategy,
+            scene="reaction_positive",
         )
 
     if "yang_yi" in supports and "wei_yan" in opposes:
-        _append_message(
-            court,
-            speaker_id="wei_yan",
-            speaker_name="魏延",
-            camp="vanguard",
-            text="魏延：只会算账，不会打仗！",
+        _append_npc_message(
+            state,
+            npc_id="wei_yan",
+            fallback_text="只会算账，不会打仗！",
+            strategy=strategy,
+            scene="conflict",
         )
     elif "wei_yan" in supports and "yang_yi" in opposes:
-        _append_message(
-            court,
-            speaker_id="yang_yi",
-            speaker_name="杨仪",
-            camp="bureaucrat",
-            text="杨仪：奇兵若败，国库先崩。",
+        _append_npc_message(
+            state,
+            npc_id="yang_yi",
+            fallback_text="奇兵若败，国库先崩。",
+            strategy=strategy,
+            scene="conflict",
         )
 
-    _append_message(
-        court,
-        speaker_id="liu_shan",
-        speaker_name="刘禅",
-        camp="imperial",
-        text=_liu_shan_progress_line(court.support, court.time_pressure),
+    _append_npc_message(
+        state,
+        npc_id="liu_shan",
+        fallback_text=_liu_shan_progress_line(court.support, court.time_pressure),
+        strategy=strategy,
+        scene="progress",
     )
+
+
+def _pick_forced_opposition_voice(
+    court: CourtState,
+    scores: dict[str, float],
+    supports: list[str],
+    opposes: list[str],
+) -> str | None:
+    core_opposition_ids = ("yang_yi", "dong_yun")
+    candidates: list[tuple[float, str, float, int]] = []
+    for npc_id in core_opposition_ids:
+        npc = court.npcs.get(npc_id)
+        if npc is None:
+            continue
+        if npc_id in supports or npc_id in opposes:
+            continue
+        score = float(scores.get(npc_id, 0.0))
+        opposition_pressure = (-score) + npc.resentment * 0.28 + (0.2 if npc.stance < 0 else 0.0)
+        candidates.append((opposition_pressure, npc_id, score, npc.resentment))
+
+    if len(candidates) < 1:
+        return None
+
+    candidates.sort(reverse=True)
+    _pressure, npc_id, score, resentment = candidates[0]
+
+    # 即使分数偏正，也在多数回合保留反对派发言，避免朝堂只剩单边声音。
+    if score <= 1.4 or resentment >= 3:
+        return npc_id
+    return npc_id
 
 
 def _positive_line(npc_id: str, strategy: CourtStrategy) -> str:

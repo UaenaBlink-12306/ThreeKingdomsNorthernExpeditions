@@ -76,3 +76,36 @@ def test_court_buffer_scenario_2_losing_streak_and_low_food_can_trigger_obstruct
     assert state.court.active_modifier.check_modifier < 0
     assert state.court.active_modifier.food_per_turn_modifier < 0
     assert state.court.active_modifier.morale_per_turn_modifier <= 0
+
+
+def test_court_buffer_each_round_keeps_core_opposition_voice() -> None:
+    engine = GameEngine()
+    state = engine.new_game(game_id="court-voice", seed=2027)
+
+    state.turn = 4
+    state.food = 80
+    state.morale = 66
+    state.politics = 56
+    state.wei_pressure = 5
+    state.doom = 4
+    state.court.momentum = 0
+    state.court.last_trigger_turn = 1
+
+    state = engine.act(state.game_id, "next_turn", {})
+    assert state.court.is_active is True
+
+    before_count = len(state.court.pending_messages)
+    state = engine.act(
+        state.game_id,
+        "court_statement",
+        {
+            "statement": "先核粮道与兵站里程，再给前线增援，避免空耗。",
+            "strategy_hint": "rational_argument",
+        },
+    )
+
+    new_messages = state.court.pending_messages[before_count:]
+    speakers = {message.speaker_id for message in new_messages}
+    assert speakers.intersection({"yang_yi", "dong_yun"}), (
+        "Expected at least one core opposition speaker (yang_yi/dong_yun) in each court reaction round."
+    )

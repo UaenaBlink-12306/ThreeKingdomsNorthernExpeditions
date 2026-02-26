@@ -10,6 +10,7 @@ import successSfx from "../assets/audio/check_success.wav";
 import failSfx from "../assets/audio/check_fail.wav";
 import winSfx from "../assets/audio/win.wav";
 import defeatSfx from "../assets/audio/defeat.wav";
+import { reportConsoleError } from "../utils/errorLogger";
 
 interface FxOverlayProps {
   map: L.Map | null;
@@ -80,8 +81,8 @@ export default function FxOverlay({ map, state, audioEnabled }: FxOverlayProps) 
     }
     try {
       sounds[kind].play();
-    } catch {
-      // Browsers can block playback until user gesture; ignore silently.
+    } catch (err) {
+      reportConsoleError("fx.play_sound_failed", err, { kind });
     }
   }
 

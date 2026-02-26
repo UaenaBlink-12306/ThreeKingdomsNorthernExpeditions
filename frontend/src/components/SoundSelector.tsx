@@ -54,30 +54,23 @@ export default function SoundSelector({ onClose }: SoundSelectorProps) {
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
+      <div className="modal sound-selector" onClick={(e) => e.stopPropagation()}>
         <h2>选择按钮音效</h2>
-        <p style={{ marginBottom: "16px", fontSize: "14px", color: "#5c3e26" }}>
+        <p className="sound-selector-intro">
           选择一个音效文件，或上传你自己的音效文件（支持 MP3、WAV、OGG 格式）
         </p>
 
-        <div style={{ marginBottom: "16px" }}>
-          <label style={{ display: "block", marginBottom: "8px", fontWeight: 600 }}>
+        <div className="sound-selector-section">
+          <label className="sound-selector-label">
             选择音效：
           </label>
-          <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "12px" }}>
+          <div className="sound-selector-preset-list">
             {presetSounds.map((preset, index) => (
               <label
                 key={index}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  padding: "8px",
-                  background: selectedUrl === preset.url ? "#f0e6d2" : "#faf8f2",
-                  border: "1px solid #a68b6b",
-                  borderRadius: "2px",
-                  cursor: "pointer",
-                }}
+                className={`sound-selector-option ${
+                  selectedUrl === preset.url ? "sound-selector-option-active" : ""
+                }`}
               >
                 <input
                   type="radio"
@@ -90,10 +83,10 @@ export default function SoundSelector({ onClose }: SoundSelectorProps) {
             ))}
           </div>
           
-          <label style={{ display: "block", marginBottom: "8px", fontWeight: 600 }}>
+          <label className="sound-selector-label">
             或上传自定义音效文件：
           </label>
-          <p style={{ fontSize: "12px", color: "#5c3e26", marginBottom: "8px" }}>
+          <p className="sound-selector-upload-tip">
             支持 MP3、WAV、OGG 格式。推荐使用短促的点击音效（0.1-0.3秒）
           </p>
           <input
@@ -101,32 +94,32 @@ export default function SoundSelector({ onClose }: SoundSelectorProps) {
             type="file"
             accept="audio/*"
             onChange={handleFileSelect}
-            style={{ display: "none" }}
+            className="sound-selector-file-input"
           />
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            style={{ width: "100%" }}
+            className="sound-selector-action-btn"
           >
             选择音效文件
           </button>
           {selectedUrl && selectedUrl.startsWith("blob:") && (
-            <p style={{ marginTop: "8px", fontSize: "12px", color: "#5c3e26" }}>
+            <p className="sound-selector-file-note">
               已选择文件
             </p>
           )}
         </div>
 
-        <div style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>
-          <button type="button" onClick={handlePreview} style={{ flex: 1 }}>
+        <div className="sound-selector-actions">
+          <button type="button" onClick={handlePreview} className="sound-selector-action-btn">
             预览音效
           </button>
-          <button type="button" onClick={onClose} style={{ flex: 1 }}>
+          <button type="button" onClick={onClose} className="sound-selector-action-btn">
             取消
           </button>
         </div>
 
-        <button type="button" onClick={handleSave} className="primary-cta" style={{ width: "100%" }}>
+        <button type="button" onClick={handleSave} className="primary-cta sound-selector-save-btn">
           保存并应用
         </button>
       </div>

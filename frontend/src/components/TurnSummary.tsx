@@ -9,9 +9,10 @@ interface TurnSummaryProps {
   state: GameState;
   prevState: GameState | null;
   deltaLog: string[];
+  courtTransitionPending: boolean;
 }
 
-export default function TurnSummary({ summary, state, prevState, deltaLog }: TurnSummaryProps) {
+export default function TurnSummary({ summary, state, prevState, deltaLog, courtTransitionPending }: TurnSummaryProps) {
   const [expanded, setExpanded] = useState(false);
   const [revealedCount, setRevealedCount] = useState(0);
   const [showGuidance, setShowGuidance] = useState(false);
@@ -51,6 +52,7 @@ export default function TurnSummary({ summary, state, prevState, deltaLog }: Tur
   return (
     <section className="turn-summary">
       <h3>本回合变化</h3>
+      {courtTransitionPending ? <p className="dispatch-status">系统预告：即将进入朝堂缓冲区（成都）。</p> : null}
       <ul>
         {visibleLines.map((line, index) => (
           <li key={`${line}-${index}`}>{line}</li>

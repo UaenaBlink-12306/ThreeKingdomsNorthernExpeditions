@@ -1,4 +1,5 @@
 // 复古木质机械音效工具
+import { reportConsoleError } from "./errorLogger";
 
 let audioContext: AudioContext | null = null;
 let selectedSoundUrl: string | null = null;
@@ -53,7 +54,7 @@ async function playSoundFile(url: string): Promise<void> {
     audio.volume = 0.6;
     await audio.play();
   } catch (error) {
-    console.debug("Sound file playback failed:", error);
+    reportConsoleError("sound.file_playback_failed", error, { url });
   }
 }
 
@@ -127,7 +128,7 @@ export function playMechanicalClick(): void {
         const ctx = getAudioContext();
         createWoodenClickSound(ctx, 0.06);
       } catch (error) {
-        console.debug('Audio playback failed:', error);
+        reportConsoleError("sound.click_fallback_failed", error);
       }
     });
   } else {
@@ -136,7 +137,7 @@ export function playMechanicalClick(): void {
       const ctx = getAudioContext();
       createWoodenClickSound(ctx, 0.06);
     } catch (error) {
-      console.debug('Audio playback failed:', error);
+      reportConsoleError("sound.click_playback_failed", error);
     }
   }
 }
@@ -155,11 +156,11 @@ export function playMechanicalPress(): void {
           try {
             createWoodenClickSound(ctx, 0.06);
           } catch (e) {
-            // 忽略错误
+            reportConsoleError("sound.press_secondary_click_failed", e);
           }
         }, 30);
       } catch (error) {
-        console.debug('Audio playback failed:', error);
+        reportConsoleError("sound.press_fallback_failed", error);
       }
     });
   } else {
@@ -170,11 +171,11 @@ export function playMechanicalPress(): void {
         try {
           createWoodenClickSound(ctx, 0.06);
         } catch (e) {
-          // 忽略错误
+          reportConsoleError("sound.press_secondary_click_failed", e);
         }
       }, 30);
     } catch (error) {
-      console.debug('Audio playback failed:', error);
+      reportConsoleError("sound.press_playback_failed", error);
     }
   }
 }
@@ -193,11 +194,11 @@ export function playMechanicalConfirm(): void {
           try {
             createWoodenClickSound(ctx, 0.05);
           } catch (e) {
-            // 忽略错误
+            reportConsoleError("sound.confirm_secondary_click_failed", e);
           }
         }, 40);
       } catch (error) {
-        console.debug('Audio playback failed:', error);
+        reportConsoleError("sound.confirm_fallback_failed", error);
       }
     });
   } else {
@@ -208,11 +209,11 @@ export function playMechanicalConfirm(): void {
         try {
           createWoodenClickSound(ctx, 0.05);
         } catch (e) {
-          // 忽略错误
+          reportConsoleError("sound.confirm_secondary_click_failed", e);
         }
       }, 40);
     } catch (error) {
-      console.debug('Audio playback failed:', error);
+      reportConsoleError("sound.confirm_playback_failed", error);
     }
   }
 }

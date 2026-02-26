@@ -24,6 +24,7 @@ import FxOverlay from "./FxOverlay";
 interface MapPanelProps {
   state: GameState;
   audioEnabled: boolean;
+  courtTransitionPending: boolean;
 }
 
 function clampProgress(value: number): number {
@@ -82,17 +83,20 @@ function MapReadyBridge({ onReady }: { onReady: (map: L.Map) => void }) {
   return null;
 }
 
-export default function MapPanel({ state, audioEnabled }: MapPanelProps) {
+export default function MapPanel({ state, audioEnabled, courtTransitionPending }: MapPanelProps) {
   const [map, setMap] = useState<L.Map | null>(null);
   const [displayProgress, setDisplayProgress] = useState(0);
   const displayProgressRef = useRef(0);
   const antLayerRef = useRef<L.Layer | null>(null);
   const decoratorRef = useRef<L.Layer | null>(null);
   const cameraTimerRef = useRef<number | null>(null);
+  const previewCourtTransition = courtTransitionPending && !state.court.is_active;
+  const displayLocationId = previewCourtTransition ? "chengdu" : state.current_location;
+  const displayRouteId = previewCourtTransition ? null : state.active_route_id;
   const prevRouteRef = useRef<string | null>(null);
-  const prevLocationRef = useRef(state.current_location);
+  const prevLocationRef = useRef(displayLocationId);
 
-  const activeRoute = state.active_route_id ? ROUTE_MAP[state.active_route_id] : undefined;
+  const activeRoute = displayRouteId ? ROUTE_MAP[displayRouteId] : undefined;
   const controlledSet = useMemo(() => new Set(state.controlled_locations), [state.controlled_locations]);
 
   useEffect(() => {
@@ -110,14 +114,14 @@ export default function MapPanel({ state, audioEnabled }: MapPanelProps) {
   }, [state.current_location, state.controlled_locations, state.active_route_id]);
 
   useEffect(() => {
-    if (prevRouteRef.current !== state.active_route_id) {
+    if (prevRouteRef.current !== displayRouteId) {
       displayProgressRef.current = 0;
       setDisplayProgress(0);
     }
-  }, [state.active_route_id]);
+  }, [displayRouteId]);
 
   useEffect(() => {
-    if (!state.active_route_id) {
+    if (!displayRouteId) {
       displayProgressRef.current = 0;
       setDisplayProgress(0);
       return;
@@ -142,7 +146,7 @@ export default function MapPanel({ state, audioEnabled }: MapPanelProps) {
 
     rafId = window.requestAnimationFrame(tick);
     return () => window.cancelAnimationFrame(rafId);
-  }, [state.route_progress, state.active_route_id]);
+  }, [state.route_progress, displayRouteId]);
 
   useEffect(() => {
     if (!map) {
@@ -211,7 +215,7 @@ export default function MapPanel({ state, audioEnabled }: MapPanelProps) {
       return;
     }
     const routeChanged = prevRouteRef.current !== (activeRoute?.id ?? null);
-    const locationChanged = prevLocationRef.current !== state.current_location;
+    const locationChanged = prevLocationRef.current !== displayLocationId;
     if (!routeChanged && !locationChanged) {
       return;
     }
@@ -225,7 +229,7 @@ export default function MapPanel({ state, audioEnabled }: MapPanelProps) {
         const bounds = L.latLngBounds(activeRoute.points.map(([lat, lng]) => [lat, lng] as [number, number]));
         map.fitBounds(bounds.pad(0.25), { animate: true, duration: 1.0 });
       } else if (locationChanged) {
-        const place = PLACE_MAP[state.current_location];
+        const place = PLACE_MAP[displayLocationId];
         if (place) {
           map.flyTo([place.lat, place.lng], Math.max(map.getZoom(), 6.7), {
             animate: true,
@@ -236,16 +240,16 @@ export default function MapPanel({ state, audioEnabled }: MapPanelProps) {
     }, 240);
 
     prevRouteRef.current = activeRoute?.id ?? null;
-    prevLocationRef.current = state.current_location;
+    prevLocationRef.current = displayLocationId;
 
     return () => {
       if (cameraTimerRef.current !== null) {
         window.clearTimeout(cameraTimerRef.current);
       }
     };
-  }, [map, state.current_location, activeRoute]);
+  }, [displayLocationId, map, activeRoute]);
 
-  const currentPlace = PLACE_MAP[state.current_location];
+  const currentPlace = PLACE_MAP[displayLocationId];
   const activePoints = activeRoute?.points ?? [];
 
   const armyPosition = useMemo<[number, number]>(() => {
@@ -291,8 +295,9 @@ export default function MapPanel({ state, audioEnabled }: MapPanelProps) {
     <section className="panel map-panel">
       <header className="map-header">
         <h2>战区态势图</h2>
-        <span>当前位置：{currentPlace ? currentPlace.name : state.current_location}</span>
+        <span>当前位置：{currentPlace ? currentPlace.name : displayLocationId}</span>
       </header>
+      {previewCourtTransition ? <p className="dispatch-status">朝堂召集中：地图先回成都，正在衔接朝议界面。</p> : null}
       <div className="map-wrap">
         <MapContainer
           center={[33.0676, 107.0238]}
@@ -334,7 +339,7 @@ export default function MapPanel({ state, audioEnabled }: MapPanelProps) {
           ) : null}
 
           {PLACES.map((place) => {
-            const isCurrent = place.id === state.current_location;
+            const isCurrent = place.id === displayLocationId;
             const isControlled = controlledSet.has(place.id);
             return (
               <CircleMarker

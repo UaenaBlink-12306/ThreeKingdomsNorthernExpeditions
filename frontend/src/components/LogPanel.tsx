@@ -13,9 +13,10 @@ interface LogPanelProps {
   summary: DiffSummary;
   state: GameState;
   prevState: GameState | null;
+  courtTransitionPending: boolean;
 }
 
-export default function LogPanel({ log, prevLog, summary, state, prevState }: LogPanelProps) {
+export default function LogPanel({ log, prevLog, summary, state, prevState, courtTransitionPending }: LogPanelProps) {
   const [showRaw, setShowRaw] = useState(false);
   const [tab, setTab] = useState<"delta" | "history">("delta");
   const [revealedDetailCount, setRevealedDetailCount] = useState(0);
@@ -43,9 +44,19 @@ export default function LogPanel({ log, prevLog, summary, state, prevState }: Lo
     return [...playerFacingDelta].sort((a, b) => priority(a) - priority(b));
   }, [playerFacingDelta]);
 
+  const deltaWithCourtNotice = useMemo(() => {
+    if (!courtTransitionPending) {
+      return prioritizedDelta;
+    }
+    return [
+      ...prioritizedDelta,
+      "系统预告：即将进入朝堂缓冲区，地图回到成都，朝议战报准备中。",
+    ];
+  }, [courtTransitionPending, prioritizedDelta]);
+
   const detailList = useMemo(
-    () => compressLog(tab === "delta" ? prioritizedDelta : playerFacingHistory).slice(-25).reverse(),
-    [tab, prioritizedDelta, playerFacingHistory]
+    () => compressLog(tab === "delta" ? deltaWithCourtNotice : playerFacingHistory).slice(-25).reverse(),
+    [tab, deltaWithCourtNotice, playerFacingHistory]
   );
   const visibleDetailList = detailList.slice(0, revealedDetailCount);
 
@@ -72,7 +83,16 @@ export default function LogPanel({ log, prevLog, summary, state, prevState }: Lo
   return (
     <aside className="panel log-panel">
       <h2>回合总结与战报</h2>
-      <TurnSummary summary={summary} state={state} prevState={prevState} deltaLog={prioritizedDelta} />
+      {courtTransitionPending ? (
+        <p className="dispatch-status">系统预告：即将进入朝堂缓冲区，地图回到成都。</p>
+      ) : null}
+      <TurnSummary
+        summary={summary}
+        state={state}
+        prevState={prevState}
+        deltaLog={deltaWithCourtNotice}
+        courtTransitionPending={courtTransitionPending}
+      />
 
       <div className="log-toolbar">
         <div className="tabs">

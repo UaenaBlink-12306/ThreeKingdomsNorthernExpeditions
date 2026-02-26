@@ -4,6 +4,7 @@ import { chatAssistant } from "../api";
 import type { DiffSummary } from "../utils/diff";
 import { computeLogDelta } from "../utils/logDelta";
 import type { ChatMode, GameState } from "../types";
+import { reportConsoleError } from "../utils/errorLogger";
 
 type ConversationRole = "user" | "assistant";
 
@@ -69,6 +70,12 @@ export default function AssistantPanel({ state, prevState, summary }: AssistantP
       });
       return response.content;
     } catch (err) {
+      reportConsoleError("assistant.request_failed", err, {
+        mode,
+        gameId: state.game_id,
+        turn: state.turn,
+        nodeId: state.current_node_id,
+      });
       setError(formatError(mode, err));
       return null;
     } finally {

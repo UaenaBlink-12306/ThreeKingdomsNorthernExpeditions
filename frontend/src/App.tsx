@@ -29,6 +29,7 @@ export default function App() {
     hasDecisionOptions,
     canNextTurn,
     commandDispatching,
+    courtTransitionPending,
     courtActive,
     setHelpOpen,
     updateHelpAutoPreference,
@@ -52,7 +53,7 @@ export default function App() {
       <ObjectiveStrip state={state} />
       <StatusPanel state={state} prevState={prevState} />
       <GoalPanel state={state} />
-      <MapPanel state={state} audioEnabled={audioEnabled} />
+      <MapPanel state={state} audioEnabled={audioEnabled} courtTransitionPending={courtTransitionPending} />
 
       <section className="main-grid">
         <div className="main-column">
@@ -75,6 +76,7 @@ export default function App() {
               options={state.current_event.options}
               busy={busy}
               dispatching={commandDispatching}
+              court_transition_pending={courtTransitionPending}
               can_next_turn={canNextTurn}
               turn={state.turn}
               onChoose={onChoose}
@@ -83,7 +85,14 @@ export default function App() {
           )}
           {!courtActive ? <CourtResultPanel court={state.court} /> : null}
         </div>
-        <LogPanel log={state.log} prevLog={prevState?.log ?? []} summary={summary} state={state} prevState={prevState} />
+        <LogPanel
+          log={state.log}
+          prevLog={prevState?.log ?? []}
+          summary={summary}
+          state={state}
+          prevState={prevState}
+          courtTransitionPending={courtTransitionPending}
+        />
       </section>
       <AssistantPanel state={state} prevState={prevState} summary={summary} />
 
