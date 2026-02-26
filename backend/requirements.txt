@@ -6,3 +6,4 @@ httpx==0.28.1
 python-dotenv==1.0.1
 
 jsonschema==4.23.0
+mangum==0.17.0
