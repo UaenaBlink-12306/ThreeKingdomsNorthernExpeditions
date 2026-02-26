@@ -264,6 +264,7 @@ cmd /c npm run dev
 
 可通过以下环境变量在“台词质量”和“响应速度”之间调节：
 
+- `DEEPSEEK_COURT_ENABLED`：总开关，是否启用朝堂 AI 服务（0/1）
 - `DEEPSEEK_COURT_LIVE_LINES`：是否启用朝堂 AI 台词
 - `DEEPSEEK_COURT_IMPORTANT_NPCS`：允许使用 AI 台词的重要人物列表
 - `DEEPSEEK_COURT_MAX_AI_LINES_PER_STEP`：每个朝堂决策步骤最多 AI 台词条数
@@ -276,6 +277,24 @@ cmd /c npm run dev
 - 仅重要人物使用 AI
 - 每步最多 1 条 AI 台词
 - 短超时 + 自动回退
+
+#### 后端 `.env` 推荐示例
+
+```env
+DEEPSEEK_API_KEY=your_key_here
+DEEPSEEK_COURT_ENABLED=1
+DEEPSEEK_COURT_LIVE_LINES=1
+DEEPSEEK_COURT_IMPORTANT_NPCS=liu_shan,yang_yi,wei_yan,jiang_wei
+DEEPSEEK_COURT_MAX_AI_LINES_PER_STEP=1
+DEEPSEEK_COURT_TIMEOUT_SECONDS=1.2
+DEEPSEEK_COURT_SUPPORT_JUDGE_ENABLED=0
+```
+
+#### 前端 `frontend/.env.local` 推荐示例
+
+```env
+VITE_API_BASE=http://127.0.0.1:8000/api
+```
 
 ### 项目结构（简版）
 
@@ -552,6 +571,8 @@ What changed recently:
 
 These settings control quality vs speed for court dialogue:
 
+- `DEEPSEEK_COURT_ENABLED`
+  - master switch for court AI service (0/1)
 - `DEEPSEEK_COURT_LIVE_LINES`
   - turn AI court lines on/off
 - `DEEPSEEK_COURT_IMPORTANT_NPCS`
@@ -569,6 +590,24 @@ Recommended fast setup currently used:
 - only important NPCs use AI
 - max 1 AI line per step
 - short timeout with fallback
+
+### Recommended backend `.env` example
+
+```env
+DEEPSEEK_API_KEY=your_key_here
+DEEPSEEK_COURT_ENABLED=1
+DEEPSEEK_COURT_LIVE_LINES=1
+DEEPSEEK_COURT_IMPORTANT_NPCS=liu_shan,yang_yi,wei_yan,jiang_wei
+DEEPSEEK_COURT_MAX_AI_LINES_PER_STEP=1
+DEEPSEEK_COURT_TIMEOUT_SECONDS=1.2
+DEEPSEEK_COURT_SUPPORT_JUDGE_ENABLED=0
+```
+
+### Recommended frontend `frontend/.env.local` example
+
+```env
+VITE_API_BASE=http://127.0.0.1:8000/api
+```
 
 ## Project Structure (Simple View)
 
