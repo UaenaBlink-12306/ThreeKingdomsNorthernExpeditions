@@ -33,6 +33,8 @@
     "@testing-library/react": "^16.2.0",
     "@testing-library/jest-dom": "^6.6.3",
     "jsdom": "^25.0.1",
-    "@types/leaflet": "^1.9.3"
+    "@types/leaflet": "^1.9.3",
+    "@types/canvas-confetti": "^1.9.3",
+    "@types/howler": "^2.2.8"
   }
 }
