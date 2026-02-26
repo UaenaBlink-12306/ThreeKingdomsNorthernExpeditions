@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { type KeyboardEvent, useEffect, useMemo, useState } from "react";
 import type { OptionView } from "../types";
 import { AnimatePresence, motion } from "framer-motion";
 import { playMechanicalClick, playMechanicalPress } from "../utils/sound";
@@ -33,11 +33,49 @@ export default function EventPanel({
   const allDisabled = hasOptions && options.every((opt) => Boolean(opt.disabled));
   const [hideHint, setHideHint] = useState(() => localStorage.getItem(EVENT_HELP_SEEN_KEY) === "1");
   const [hideOnboard, setHideOnboard] = useState(() => localStorage.getItem(EVENT_ONBOARD_SEEN_KEY) === "1");
+  const [dispatchElapsedSec, setDispatchElapsedSec] = useState(0);
 
   const prompt = useMemo(
     () => (hasOptions ? `你现在要做：选择一个行动（${options.length}）` : "你现在要做：推进回合（触发被动变化）"),
     [hasOptions, options.length]
   );
+  const dispatchMessage = useMemo(() => {
+    if (!dispatching) {
+      return "";
+    }
+    if (court_transition_pending) {
+      if (dispatchElapsedSec < 3) {
+        return "指令已下达：即将进入朝堂缓冲区，地图回到成都，正在调取朝堂战报...";
+      }
+      if (dispatchElapsedSec < 10) {
+        return `朝堂文书整理中（已等待 ${dispatchElapsedSec}s）...`;
+      }
+      return `朝堂数据较多，仍在同步（已等待 ${dispatchElapsedSec}s）。系统仍在处理，请稍候。`;
+    }
+    if (dispatchElapsedSec < 3) {
+      return "指令已下达，正在传令并等待前线回报...";
+    }
+    if (dispatchElapsedSec < 10) {
+      return `战报回传中（已等待 ${dispatchElapsedSec}s）...`;
+    }
+    return `回报处理较慢（已等待 ${dispatchElapsedSec}s），系统仍在同步。`;
+  }, [court_transition_pending, dispatchElapsedSec, dispatching]);
+
+  useEffect(() => {
+    if (!dispatching) {
+      setDispatchElapsedSec(0);
+      return;
+    }
+    const startedAt = Date.now();
+    const tick = () => {
+      setDispatchElapsedSec(Math.floor((Date.now() - startedAt) / 1000));
+    };
+    tick();
+    const timer = window.setInterval(tick, 300);
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [dispatching]);
 
   function dismissHint() {
     playMechanicalClick();
@@ -51,19 +89,23 @@ export default function EventPanel({
     localStorage.setItem(EVENT_ONBOARD_SEEN_KEY, "1");
   }
 
+  function onOnboardKeydown(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.key !== "Enter" && event.key !== " ") {
+      return;
+    }
+    event.preventDefault();
+    dismissOnboard();
+  }
+
   return (
     <section className="panel event-panel">
       <h2>当前事件</h2>
-      <p className="action-prompt">{prompt}</p>
+      <p className="action-prompt" aria-live="polite">{prompt}</p>
       {dispatching ? (
-        <p className="dispatch-status">
-          {court_transition_pending
-            ? "指令已下达：即将进入朝堂缓冲区，地图回到成都，正在调取朝堂战报..."
-            : "指令已下达，正在传令并等待前线回报..."}
-        </p>
+        <p className="dispatch-status">{dispatchMessage}</p>
       ) : null}
       {!hideOnboard && turn <= 1 ? (
-        <div className="event-onboard" onClick={() => { playMechanicalClick(); dismissOnboard(); }} role="button" tabIndex={0}>
+        <div className="event-onboard" onClick={dismissOnboard} onKeyDown={onOnboardKeydown} role="button" tabIndex={0}>
           <div>赢：关中 3/3 且陇右稳定</div>
           <div>输：Doom 链条失败 / 核心失守</div>
           <div>每回合：先看变化 + Because，再决定选项</div>

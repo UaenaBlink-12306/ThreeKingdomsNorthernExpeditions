@@ -71,7 +71,7 @@ function campLabel(camp: string): string {
 }
 
 function messageDelay(text: string): number {
-  return Math.max(450, Math.min(1600, 420 + text.length * 24));
+  return Math.max(180, Math.min(720, 180 + text.length * 12));
 }
 
 export default function CourtBufferPanel({
@@ -87,6 +87,7 @@ export default function CourtBufferPanel({
   const [selectedGoal, setSelectedGoal] = useState<CourtGoalId>("supply_request");
   const [visibleIds, setVisibleIds] = useState<string[]>([]);
   const [skipQueue, setSkipQueue] = useState(false);
+  const [dispatchElapsedSec, setDispatchElapsedSec] = useState(0);
   const chatContainerRef = useRef<HTMLDivElement | null>(null);
   const timerRef = useRef<number | null>(null);
   const lastSessionRef = useRef<number>(court.session_id);
@@ -193,6 +194,18 @@ export default function CourtBufferPanel({
       secure_edict: { progress: edictProgress, done: edictDone },
     };
   }, [court.support, court.temperature, maxResentment]);
+  const dispatchMessage = useMemo(() => {
+    if (!dispatching) {
+      return "";
+    }
+    if (dispatchElapsedSec < 3) {
+      return "朝议中……文书往返传递。";
+    }
+    if (dispatchElapsedSec < 10) {
+      return `朝议文书整理中（已等待 ${dispatchElapsedSec}s）...`;
+    }
+    return `朝议处理较慢（已等待 ${dispatchElapsedSec}s），系统仍在同步。`;
+  }, [dispatchElapsedSec, dispatching]);
 
   function submitStatement(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -225,6 +238,22 @@ export default function CourtBufferPanel({
     }
     playMechanicalClick();
   }
+
+  useEffect(() => {
+    if (!dispatching) {
+      setDispatchElapsedSec(0);
+      return;
+    }
+    const startedAt = Date.now();
+    const tick = () => {
+      setDispatchElapsedSec(Math.floor((Date.now() - startedAt) / 1000));
+    };
+    tick();
+    const timer = window.setInterval(tick, 300);
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [dispatching]);
 
   return (
     <section className="panel court-panel">
@@ -365,7 +394,7 @@ export default function CourtBufferPanel({
         </button>
       </div>
 
-      {dispatching ? <p className="dispatch-status">朝议中……文书往返传递。</p> : null}
+      {dispatching ? <p className="dispatch-status">{dispatchMessage}</p> : null}
     </section>
   );
 }

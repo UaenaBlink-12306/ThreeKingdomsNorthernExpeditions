@@ -6,6 +6,7 @@ interface HelpDrawerProps {
   disable_auto_open: boolean;
   on_close: () => void;
   on_disable_auto_open_change: (value: boolean) => void;
+  on_reopen_prologue: () => void;
 }
 
 export default function HelpDrawer({
@@ -13,6 +14,7 @@ export default function HelpDrawer({
   disable_auto_open,
   on_close,
   on_disable_auto_open_change,
+  on_reopen_prologue,
 }: HelpDrawerProps) {
   return (
     <AnimatePresence>
@@ -44,6 +46,18 @@ export default function HelpDrawer({
               <li>final：冲击并稳固关中回合。</li>
             </ul>
             <p>建议阅读顺序：目标条 → 本回合变化 + Because → 本回合战报。</p>
+
+            <div className="help-actions">
+              <button
+                type="button"
+                onClick={() => {
+                  playMechanicalClick();
+                  on_reopen_prologue();
+                }}
+              >
+                重看序章
+              </button>
+            </div>
 
             <label className="help-checkbox">
               <input

@@ -137,8 +137,10 @@ class GameAssistantService:
         return (
             "你将扮演三国时代谋臣，与玩家进行角色化对话。"
             "保持角色语气，但建议必须基于当前游戏状态。"
+            "第一优先是回应玩家刚刚说的话：先回答其问题或诉求，再给延伸建议。"
             "禁止声称你改变了游戏机制或结果。"
-            "回答中需体现支持与反对两方的核心理由，不要只给单边赞成。"
+            "可给出支持与反对两方视角，但不强制平均分配。"
+            "如果玩家信息不足，可先提出一个澄清问题。"
         )
 
     def _user_prompt(
@@ -181,7 +183,11 @@ class GameAssistantService:
         else:
             character = (roleplay_character or "前线统帅").strip() or "前线统帅"
             message = (user_message or "").strip() or "请为当前局势给我谏言。"
-            task = f"角色：{character}\n玩家发言：{message}"
+            task = (
+                f"角色：{character}\n"
+                f"玩家发言：{message}\n"
+                "回答要求：先直接回应玩家这句话，再给最多三条可执行建议。"
+            )
 
         return "\n".join(context_parts + ["", task])
 

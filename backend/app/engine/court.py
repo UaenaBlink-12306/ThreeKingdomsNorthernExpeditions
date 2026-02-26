@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import random
 
 from app.assistant.court_dialogue import CourtDialogueService
@@ -14,6 +15,34 @@ from app.models.court import (
     CourtStrategy,
 )
 from app.models.state import GameState, Outcome, Phase
+
+
+def _parse_bool(raw: str | None, default: bool) -> bool:
+    if raw is None:
+        return default
+    normalized = raw.strip().lower()
+    if normalized in {"1", "true", "yes", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "off"}:
+        return False
+    return default
+
+
+def _parse_int(raw: str | None, default: int) -> int:
+    if raw is None:
+        return default
+    try:
+        return int(raw.strip())
+    except (TypeError, ValueError):
+        return default
+
+
+def _parse_id_set(raw: str | None, default: set[str]) -> set[str]:
+    if raw is None:
+        return set(default)
+    values = {item.strip() for item in raw.split(",") if item.strip()}
+    return values or set(default)
+
 
 COURT_TRIGGER_INTERVAL = 3
 COURT_REENTRY_COOLDOWN_TURNS = 2
@@ -73,10 +102,32 @@ ISSUE_LABELS = {
 }
 
 _court_dialogue = CourtDialogueService()
+COURT_MODEL_LINES_ENABLED = _parse_bool(os.getenv("DEEPSEEK_COURT_LIVE_LINES"), True)
+COURT_IMPORTANT_NPC_IDS = _parse_id_set(
+    os.getenv("DEEPSEEK_COURT_IMPORTANT_NPCS"),
+    {"liu_shan", "yang_yi", "wei_yan", "jiang_wei"},
+)
+COURT_MAX_AI_LINES_PER_STEP = max(1, _parse_int(os.getenv("DEEPSEEK_COURT_MAX_AI_LINES_PER_STEP"), 1))
 
 
 def _clamp(value: float, low: int, high: int) -> int:
     return int(max(low, min(high, round(value))))
+
+
+def _new_ai_line_budget() -> dict[str, int]:
+    if not COURT_MODEL_LINES_ENABLED:
+        return {"remaining": 0}
+    return {"remaining": COURT_MAX_AI_LINES_PER_STEP}
+
+
+def _consume_ai_line_budget(ai_budget: dict[str, int] | None, npc_id: str) -> bool:
+    if ai_budget is None or npc_id not in COURT_IMPORTANT_NPC_IDS:
+        return False
+    remaining = int(ai_budget.get("remaining", 0))
+    if remaining <= 0:
+        return False
+    ai_budget["remaining"] = remaining - 1
+    return True
 
 
 def _message_id(court: CourtState) -> str:
@@ -103,19 +154,24 @@ def _append_npc_message(
     fallback_text: str,
     strategy: CourtStrategy | None = None,
     scene: str = "debate",
+    player_statement: str | None = None,
+    allow_model: bool = False,
 ) -> None:
     court = state.court
     npc = court.npcs.get(npc_id)
     if npc is None:
         return
 
-    text = _court_dialogue.generate_line(
-        state=state,
-        npc=npc,
-        fallback_text=fallback_text,
-        strategy=strategy,
-        scene=scene,
-    )
+    text = fallback_text
+    if allow_model and COURT_MODEL_LINES_ENABLED:
+        text = _court_dialogue.generate_line(
+            state=state,
+            npc=npc,
+            fallback_text=fallback_text,
+            strategy=strategy,
+            scene=scene,
+            player_statement=player_statement,
+        )
     _append_message(
         court,
         speaker_id=npc.id,
@@ -250,8 +306,9 @@ def resolve_court_strategy(
 
     profile = STRATEGY_PROFILE[strategy]
     strategy_name = STRATEGY_FRIENDLY_NAMES[strategy]
+    clean_statement: str | None = None
     if statement:
-        clean_statement = " ".join(statement.split())[:120]
+        clean_statement = " ".join(statement.split())[:180]
         _append_message(
             court,
             speaker_id="player",
@@ -272,8 +329,9 @@ def resolve_court_strategy(
 
     scores = _evaluate_npc_scores(state, strategy, rng)
     support_shift, temp_shift = _aggregate_strategy_effect(state, strategy, scores, rng)
-    if statement:
-        support_shift += _statement_quality_bonus(statement, strategy, court.current_issue_tags)
+    if clean_statement:
+        support_shift += _statement_quality_bonus(clean_statement, strategy, court.current_issue_tags)
+    support_shift = _clamp(support_shift, -10, 10)
     old_support = court.support
     old_temp = court.temperature
     court.support = _clamp(court.support + support_shift, 0, 100)
@@ -283,17 +341,42 @@ def resolve_court_strategy(
     _update_resentment(state, strategy, scores)
     rebound_events = _trigger_resentment_event_if_needed(state)
 
+    reaction_start = len(court.pending_messages)
+    reaction_ai_budget = _new_ai_line_budget()
+    _append_reaction_lines(
+        state,
+        strategy,
+        scores,
+        player_statement=clean_statement,
+        ai_budget=reaction_ai_budget,
+    )
+    if clean_statement:
+        reaction_lines = [
+            message.text
+            for message in court.pending_messages[reaction_start:]
+            if message.speaker_id not in {"system", "player"} and message.text.strip()
+        ]
+        judged_shift = _court_dialogue.judge_support_shift(
+            state=state,
+            strategy=strategy,
+            statement=clean_statement,
+            reaction_lines=reaction_lines,
+            heuristic_shift=support_shift,
+        )
+        support_shift = _clamp(judged_shift, -10, 10)
+        court.support = _clamp(old_support + support_shift, 0, 100)
+
     _append_message(
         court,
         speaker_id="system",
         speaker_name="军议记录",
         camp="system",
         text=(
-            f"支持度 {old_support}->{court.support}，温度 {old_temp}->{court.temperature}，"
+            f"支持度 {old_support}->{court.support}（{support_shift:+d}），"
+            f"温度 {old_temp}->{court.temperature}，"
             f"时限剩余 {court.time_pressure}/{court.max_time_pressure}。"
         ),
     )
-    _append_reaction_lines(state, strategy, scores)
     if rebound_events:
         for event_text in rebound_events:
             _append_message(
@@ -751,7 +834,14 @@ def _trigger_resentment_event_if_needed(state: GameState) -> list[str]:
     return events
 
 
-def _append_reaction_lines(state: GameState, strategy: CourtStrategy, scores: dict[str, float]) -> None:
+def _append_reaction_lines(
+    state: GameState,
+    strategy: CourtStrategy,
+    scores: dict[str, float],
+    *,
+    player_statement: str | None = None,
+    ai_budget: dict[str, int] | None = None,
+) -> None:
     court = state.court
     ordered = sorted(scores.items(), key=lambda item: item[1], reverse=True)
     supports = [npc_id for npc_id, score in ordered if score >= 0.6][:2]
@@ -780,6 +870,8 @@ def _append_reaction_lines(state: GameState, strategy: CourtStrategy, scores: di
             fallback_text=_negative_line(npc_id, strategy),
             strategy=strategy,
             scene="reaction_negative",
+            player_statement=player_statement,
+            allow_model=_consume_ai_line_budget(ai_budget, npc_id),
         )
     for npc_id in supports:
         _append_npc_message(
@@ -788,6 +880,8 @@ def _append_reaction_lines(state: GameState, strategy: CourtStrategy, scores: di
             fallback_text=_positive_line(npc_id, strategy),
             strategy=strategy,
             scene="reaction_positive",
+            player_statement=player_statement,
+            allow_model=_consume_ai_line_budget(ai_budget, npc_id),
         )
 
     if "yang_yi" in supports and "wei_yan" in opposes:
@@ -797,6 +891,8 @@ def _append_reaction_lines(state: GameState, strategy: CourtStrategy, scores: di
             fallback_text="只会算账，不会打仗！",
             strategy=strategy,
             scene="conflict",
+            player_statement=player_statement,
+            allow_model=_consume_ai_line_budget(ai_budget, "wei_yan"),
         )
     elif "wei_yan" in supports and "yang_yi" in opposes:
         _append_npc_message(
@@ -805,6 +901,8 @@ def _append_reaction_lines(state: GameState, strategy: CourtStrategy, scores: di
             fallback_text="奇兵若败，国库先崩。",
             strategy=strategy,
             scene="conflict",
+            player_statement=player_statement,
+            allow_model=_consume_ai_line_budget(ai_budget, "yang_yi"),
         )
 
     _append_npc_message(
@@ -813,6 +911,8 @@ def _append_reaction_lines(state: GameState, strategy: CourtStrategy, scores: di
         fallback_text=_liu_shan_progress_line(court.support, court.time_pressure),
         strategy=strategy,
         scene="progress",
+        player_statement=player_statement,
+        allow_model=_consume_ai_line_budget(ai_budget, "liu_shan"),
     )
 
 

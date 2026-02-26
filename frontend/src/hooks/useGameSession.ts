@@ -20,14 +20,6 @@ function formatErrorMessage(scope: string, err: unknown): string {
   return `[${scope}] ${detail}`;
 }
 
-const COMMAND_DISPATCH_DELAY_MS = 500;
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => {
-    window.setTimeout(resolve, ms);
-  });
-}
-
 function shouldLikelyEnterCourtOnNextTurn(state: GameState): boolean {
   if (state.court.is_active || state.outcome !== "ONGOING") {
     return false;
@@ -239,7 +231,6 @@ export function useGameSession() {
     setError("");
     setCommandDispatching(true);
     try {
-      await sleep(COMMAND_DISPATCH_DELAY_MS);
       await createGameMutation.mutateAsync();
     } catch (err) {
       reportConsoleError("game.on_new_game_failed", err);
@@ -257,7 +248,6 @@ export function useGameSession() {
     setCourtTransitionPending(shouldLikelyEnterCourtOnChoose(state, optionId));
     setCommandDispatching(true);
     try {
-      await sleep(COMMAND_DISPATCH_DELAY_MS);
       await actMutation.mutateAsync({
         currentGameId: state.game_id,
         action: "choose_option",
@@ -283,7 +273,6 @@ export function useGameSession() {
     setCourtTransitionPending(shouldLikelyEnterCourtOnNextTurn(state));
     setCommandDispatching(true);
     try {
-      await sleep(COMMAND_DISPATCH_DELAY_MS);
       await actMutation.mutateAsync({
         currentGameId: state.game_id,
         action: "next_turn",
@@ -307,7 +296,6 @@ export function useGameSession() {
     setPrevState(state);
     setCommandDispatching(true);
     try {
-      await sleep(COMMAND_DISPATCH_DELAY_MS);
       await actMutation.mutateAsync({
         currentGameId: state.game_id,
         action: "court_strategy",
@@ -335,7 +323,6 @@ export function useGameSession() {
     setPrevState(state);
     setCommandDispatching(true);
     try {
-      await sleep(COMMAND_DISPATCH_DELAY_MS);
       await actMutation.mutateAsync({
         currentGameId: state.game_id,
         action: "court_statement",
@@ -363,7 +350,6 @@ export function useGameSession() {
     setPrevState(state);
     setCommandDispatching(true);
     try {
-      await sleep(260);
       await actMutation.mutateAsync({
         currentGameId: state.game_id,
         action: "court_fast_forward",
@@ -384,6 +370,26 @@ export function useGameSession() {
     localStorage.setItem(HELP_DISABLE_AUTO_KEY, disable ? "1" : "0");
   }
 
+  async function refreshState() {
+    if (!gameId) {
+      return;
+    }
+    setError("");
+    try {
+      const next = await queryClient.fetchQuery({
+        queryKey: ["game", gameId],
+        queryFn: () => getState(gameId),
+        retry: 2,
+        retryDelay: (attemptIndex) => Math.min(250 * 2 ** attemptIndex, 2_000),
+        staleTime: 0,
+      });
+      queryClient.setQueryData(["game", gameId], next);
+    } catch (err) {
+      reportConsoleError("game.refresh_state_failed", err, { gameId });
+      setError(formatErrorMessage("refresh", err));
+    }
+  }
+
   return {
     state,
     prevState,
@@ -400,6 +406,7 @@ export function useGameSession() {
     courtActive,
     setHelpOpen,
     updateHelpAutoPreference,
+    refreshState,
     onNewGame,
     onChoose,
     onNextTurn,
