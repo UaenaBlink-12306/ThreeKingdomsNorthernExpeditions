@@ -9,7 +9,7 @@ from app.models.requests import ActRequest, NewGameRequest, ResetRequest
 from app.models.state import GameState
 from app.models.telemetry import ReplayView
 
-router = APIRouter(prefix="/api", tags=["game"])
+router = APIRouter(tags=["game"])
 engine = GameEngine()
 assistant = GameAssistantService()
 
